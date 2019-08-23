@@ -22,4 +22,5 @@ package io.github.resilience4j.core;
 public interface EventConsumer<T> {
 
     void consumeEvent(T event);
+
 }

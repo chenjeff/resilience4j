@@ -43,7 +43,7 @@ import io.vavr.CheckedFunction1;
  *     MyService myService = Resilience4jFeign.builder(decorators).target(MyService.class, "http://localhost:8080/");
  * }
  * </pre>
- *
+ * <p>
  * The order in which decorators are applied correspond to the order in which they are declared. For
  * example, calling {@link FeignDecorators.Builder#withFallback(Object)} before
  * {@link FeignDecorators.Builder#withCircuitBreaker(CircuitBreaker)} would mean that the fallback
@@ -62,11 +62,15 @@ public class FeignDecorators implements FeignDecorator {
 
     @Override
     public CheckedFunction1<Object[], Object> decorate(CheckedFunction1<Object[], Object> fn,
-            Method method, MethodHandler methodHandler, Target<?> target) {
+                                                       Method method,
+                                                       MethodHandler methodHandler,
+                                                       Target<?> target) {
+
         CheckedFunction1<Object[], Object> decoratedFn = fn;
         for (final FeignDecorator decorator : decorators) {
             decoratedFn = decorator.decorate(decoratedFn, method, methodHandler, target);
         }
+
         return decoratedFn;
     }
 
@@ -105,7 +109,7 @@ public class FeignDecorators implements FeignDecorator {
          * fallback being called when the previous one fails.
          *
          * @param fallback must match the feign interface, i.e. the interface specified when calling
-         *        {@link Resilience4jFeign.Builder#target(Class, String)}.
+         *                 {@link Resilience4jFeign.Builder#target(Class, String)}.
          * @return the builder
          */
         public Builder withFallback(Object fallback) {
@@ -118,7 +122,7 @@ public class FeignDecorators implements FeignDecorator {
          * Multiple fallbacks can be applied with the next fallback being called when the previous one fails.
          *
          * @param fallbackFactory must match the feign interface, i.e. the interface specified when calling
-         *        {@link Resilience4jFeign.Builder#target(Class, String)}.
+         *                        {@link Resilience4jFeign.Builder#target(Class, String)}.
          * @return the builder
          */
         public Builder withFallbackFactory(Function<Exception, ?> fallbackFactory) {
@@ -131,9 +135,9 @@ public class FeignDecorators implements FeignDecorator {
          * fallback being called when the previous one fails.
          *
          * @param fallback must match the feign interface, i.e. the interface specified when calling
-         *        {@link Resilience4jFeign.Builder#target(Class, String)}.
-         * @param filter only {@link Exception}s matching the specified {@link Exception} will
-         *        trigger the fallback.
+         *                 {@link Resilience4jFeign.Builder#target(Class, String)}.
+         * @param filter   only {@link Exception}s matching the specified {@link Exception} will
+         *                 trigger the fallback.
          * @return the builder
          */
         public Builder withFallback(Object fallback, Class<? extends Exception> filter) {
@@ -146,9 +150,9 @@ public class FeignDecorators implements FeignDecorator {
          * Multiple fallbacks can be applied with the next fallback being called when the previous one fails.
          *
          * @param fallbackFactory must match the feign interface, i.e. the interface specified when calling
-         *        {@link Resilience4jFeign.Builder#target(Class, String)}.
-         * @param filter only {@link Exception}s matching the specified {@link Exception} will
-         *        trigger the fallback.
+         *                        {@link Resilience4jFeign.Builder#target(Class, String)}.
+         * @param filter          only {@link Exception}s matching the specified {@link Exception} will
+         *                        trigger the fallback.
          * @return the builder
          */
         public Builder withFallbackFactory(Function<Exception, ?> fallbackFactory, Class<? extends Exception> filter) {
@@ -161,8 +165,8 @@ public class FeignDecorators implements FeignDecorator {
          * fallback being called when the previous one fails.
          *
          * @param fallback must match the feign interface, i.e. the interface specified when calling
-         *        {@link Resilience4jFeign.Builder#target(Class, String)}.
-         * @param filter the filter must return <code>true</code> for the fallback to be called.
+         *                 {@link Resilience4jFeign.Builder#target(Class, String)}.
+         * @param filter   the filter must return <code>true</code> for the fallback to be called.
          * @return the builder
          */
         public Builder withFallback(Object fallback, Predicate<Exception> filter) {
@@ -175,8 +179,8 @@ public class FeignDecorators implements FeignDecorator {
          * Multiple fallbacks can be applied with the next fallback being called when the previous one fails.
          *
          * @param fallbackFactory must match the feign interface, i.e. the interface specified when calling
-         *        {@link Resilience4jFeign.Builder#target(Class, String)}.
-         * @param filter the filter must return <code>true</code> for the fallback to be called.
+         *                        {@link Resilience4jFeign.Builder#target(Class, String)}.
+         * @param filter          the filter must return <code>true</code> for the fallback to be called.
          * @return the builder
          */
         public Builder withFallbackFactory(Function<Exception, ?> fallbackFactory, Predicate<Exception> filter) {

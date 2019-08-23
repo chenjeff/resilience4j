@@ -54,7 +54,7 @@ class RingBitSet {
      * {@code bitSetSize-1}. The bits from the source ring bit set are copied into the new ring bit set.
      *
      * @param bitSetSize the size of the ring bit set
-     * @param sourceSet the source ring bit set
+     * @param sourceSet  the source ring bit set
      * @throws NegativeArraySizeException if the specified initial size
      *                                    is negative
      */
@@ -80,11 +80,14 @@ class RingBitSet {
      */
     public synchronized int setNextBit(boolean value) {
         increaseLength();
+        // 求余, 计算槽位索引
         index = (index + 1) % size;
 
         int previous = bitSet.set(index, value);
         int current = value ? 1 : 0;
+        // 记录true值的数量
         cardinality = cardinality - previous + current;
+
         return cardinality;
     }
 
@@ -109,6 +112,8 @@ class RingBitSet {
     }
 
     /**
+     * 数值个数
+     * <p>
      * Returns the "logical size" up to the maximum size of this {@code RingBitSet}.
      * Returns zero if the {@code RingBitSet} contains no set bits.
      *
@@ -120,6 +125,7 @@ class RingBitSet {
 
     /**
      * Prints the current state of internal bit set.
+     *
      * @return string representation on internal bit set.
      */
     @Override
@@ -132,6 +138,8 @@ class RingBitSet {
     }
 
     /**
+     * 最后一个设置的索引位
+     * <p>
      * Returns the current index of this {@code RingBitSet}.
      * Use only for debugging and testing
      *
@@ -147,9 +155,11 @@ class RingBitSet {
             if (nextLength < size) {
                 length = nextLength;
             } else {
+                // 满
                 length = size;
                 notFull = false;
             }
         }
     }
+
 }

@@ -36,65 +36,66 @@ import java.util.function.Supplier;
  */
 public class InMemoryRateLimiterRegistry extends AbstractRegistry<RateLimiter, RateLimiterConfig> implements RateLimiterRegistry {
 
-	/**
-	 * The constructor with default default.
-	 */
-	public InMemoryRateLimiterRegistry() {
-		this(RateLimiterConfig.ofDefaults());
-	}
+    /**
+     * The constructor with default default.
+     */
+    public InMemoryRateLimiterRegistry() {
+        this(RateLimiterConfig.ofDefaults());
+    }
 
-	public InMemoryRateLimiterRegistry(Map<String, RateLimiterConfig> configs) {
-		this(configs.getOrDefault(DEFAULT_CONFIG, RateLimiterConfig.ofDefaults()));
-		this.configurations.putAll(configs);
-	}
+    public InMemoryRateLimiterRegistry(Map<String, RateLimiterConfig> configs) {
+        this(configs.getOrDefault(DEFAULT_CONFIG, RateLimiterConfig.ofDefaults()));
+        this.configurations.putAll(configs);
+    }
 
-	/**
-	 * The constructor with custom default config.
-	 *
-	 * @param defaultConfig The default config.
-	 */
-	public InMemoryRateLimiterRegistry(RateLimiterConfig defaultConfig) {
-		super(defaultConfig);
-	}
+    /**
+     * The constructor with custom default config.
+     *
+     * @param defaultConfig The default config.
+     */
+    public InMemoryRateLimiterRegistry(RateLimiterConfig defaultConfig) {
+        super(defaultConfig);
+    }
 
-	/**
-	 * {@inheritDoc}
-	 */
-	@Override
-	public Seq<RateLimiter> getAllRateLimiters() {
-		return Array.ofAll(entryMap.values());
-	}
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Seq<RateLimiter> getAllRateLimiters() {
+        return Array.ofAll(entryMap.values());
+    }
 
-	/**
-	 * {@inheritDoc}
-	 */
-	@Override
-	public RateLimiter rateLimiter(final String name) {
-		return rateLimiter(name, getDefaultConfig());
-	}
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public RateLimiter rateLimiter(final String name) {
+        return rateLimiter(name, getDefaultConfig());
+    }
 
-	/**
-	 * {@inheritDoc}
-	 */
-	@Override
-	public RateLimiter rateLimiter(final String name, final RateLimiterConfig config) {
-		return computeIfAbsent(name, () -> new AtomicRateLimiter(name, Objects.requireNonNull(config, CONFIG_MUST_NOT_BE_NULL)));
-	}
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public RateLimiter rateLimiter(final String name, final RateLimiterConfig config) {
+        return computeIfAbsent(name, () -> new AtomicRateLimiter(name, Objects.requireNonNull(config, CONFIG_MUST_NOT_BE_NULL)));
+    }
 
-	/**
-	 * {@inheritDoc}
-	 */
-	@Override
-	public RateLimiter rateLimiter(final String name, final Supplier<RateLimiterConfig> rateLimiterConfigSupplier) {
-		return computeIfAbsent(name, () -> new AtomicRateLimiter(name, Objects.requireNonNull(Objects.requireNonNull(rateLimiterConfigSupplier, SUPPLIER_MUST_NOT_BE_NULL).get(), CONFIG_MUST_NOT_BE_NULL)));
-	}
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public RateLimiter rateLimiter(final String name, final Supplier<RateLimiterConfig> rateLimiterConfigSupplier) {
+        return computeIfAbsent(name, () -> new AtomicRateLimiter(name, Objects.requireNonNull(Objects.requireNonNull(rateLimiterConfigSupplier, SUPPLIER_MUST_NOT_BE_NULL).get(), CONFIG_MUST_NOT_BE_NULL)));
+    }
 
-	/**
-	 * {@inheritDoc}
-	 */
-	@Override
-	public RateLimiter rateLimiter(String name, String configName) {
-		return computeIfAbsent(name, () -> RateLimiter.of(name, getConfiguration(configName)
-				.orElseThrow(() -> new ConfigurationNotFoundException(configName))));
-	}
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public RateLimiter rateLimiter(String name, String configName) {
+        return computeIfAbsent(name, () -> RateLimiter.of(name, getConfiguration(configName)
+                .orElseThrow(() -> new ConfigurationNotFoundException(configName))));
+    }
+
 }

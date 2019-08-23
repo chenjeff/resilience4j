@@ -47,8 +47,10 @@ class DefaultFallbackHandler<T> implements FallbackHandler<T> {
                 if (filter.test(exception)) {
                     return fallbackMethod.invoke(fallback, args);
                 }
+                
                 throw exception;
             }
         };
     }
+
 }

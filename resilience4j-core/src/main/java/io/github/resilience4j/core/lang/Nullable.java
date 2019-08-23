@@ -44,4 +44,5 @@ import java.lang.annotation.*;
 @Nonnull(when = When.MAYBE)
 @TypeQualifierNickname
 public @interface Nullable {
+
 }

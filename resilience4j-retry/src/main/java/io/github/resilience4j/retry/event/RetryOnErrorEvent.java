@@ -26,6 +26,7 @@ public class RetryOnErrorEvent extends AbstractRetryEvent {
     public RetryOnErrorEvent(String name, int numberOfAttempts, Throwable lastThrowable) {
         super(name, numberOfAttempts, lastThrowable);
     }
+
     @Override
     public Type getEventType() {
         return Type.ERROR;
@@ -39,4 +40,5 @@ public class RetryOnErrorEvent extends AbstractRetryEvent {
                 getNumberOfRetryAttempts(),
                 getLastThrowable() != null ? getLastThrowable().toString() : "null");
     }
+
 }

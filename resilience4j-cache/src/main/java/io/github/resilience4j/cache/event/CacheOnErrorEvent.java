@@ -46,4 +46,5 @@ public class CacheOnErrorEvent extends AbstractCacheEvent {
                 getCacheName(),
                 getThrowable().toString());
     }
+
 }

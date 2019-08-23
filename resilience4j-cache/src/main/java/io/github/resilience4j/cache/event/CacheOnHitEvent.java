@@ -46,4 +46,5 @@ public class CacheOnHitEvent<K> extends AbstractCacheEvent {
                 getCacheName(),
                 getCacheKey().toString());
     }
+
 }

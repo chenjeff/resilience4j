@@ -44,224 +44,240 @@ import static java.util.Objects.requireNonNull;
  */
 public class FixedThreadPoolBulkhead implements ThreadPoolBulkhead {
 
-	private static final String CONFIG_MUST_NOT_BE_NULL = "Config must not be null";
+    private static final String CONFIG_MUST_NOT_BE_NULL = "Config must not be null";
 
-	private final String name;
-	private final ThreadPoolExecutor executorService;
-	private final FixedThreadPoolBulkhead.BulkheadMetrics metrics;
-	private final FixedThreadPoolBulkhead.BulkheadEventProcessor eventProcessor;
-	private final ThreadPoolBulkheadConfig config;
+    private final String name;
+    private final ThreadPoolBulkheadConfig config;
 
-	/**
-	 * Creates a bulkhead using a configuration supplied
-	 *
-	 * @param name           the name of this bulkhead
-	 * @param bulkheadConfig custom bulkhead configuration
-	 */
-	public FixedThreadPoolBulkhead(String name, @Nullable ThreadPoolBulkheadConfig bulkheadConfig) {
-		this.name = name;
-		this.config = requireNonNull(bulkheadConfig, CONFIG_MUST_NOT_BE_NULL);
-		// init thread pool executor
-		this.executorService = new ThreadPoolExecutor(config.getCoreThreadPoolSize(), config.getMaxThreadPoolSize(),
-				config.getKeepAliveDuration().toMillis(), TimeUnit.MILLISECONDS,
-				new ArrayBlockingQueue<>(config.getQueueCapacity()),
-				new NamingThreadFactory(name));
-		// adding prover jvm executor shutdown
-		cleanup();
-		this.metrics = new FixedThreadPoolBulkhead.BulkheadMetrics();
-		this.eventProcessor = new FixedThreadPoolBulkhead.BulkheadEventProcessor();
-	}
+    private final ThreadPoolExecutor executorService;
+    private final FixedThreadPoolBulkhead.BulkheadMetrics metrics;
+    private final FixedThreadPoolBulkhead.BulkheadEventProcessor eventProcessor;
 
-	/**
-	 * Creates a bulkhead with a default config.
-	 *
-	 * @param name the name of this bulkhead
-	 */
-	public FixedThreadPoolBulkhead(String name) {
-		this(name, ThreadPoolBulkheadConfig.ofDefaults());
-	}
+    /**
+     * Creates a bulkhead using a configuration supplied
+     *
+     * @param name           the name of this bulkhead
+     * @param bulkheadConfig custom bulkhead configuration
+     */
+    public FixedThreadPoolBulkhead(String name, @Nullable ThreadPoolBulkheadConfig bulkheadConfig) {
+        this.name = name;
+        this.config = requireNonNull(bulkheadConfig, CONFIG_MUST_NOT_BE_NULL);
 
-	/**
-	 * Create a bulkhead using a configuration supplier
-	 *
-	 * @param name           the name of this bulkhead
-	 * @param configSupplier BulkheadConfig supplier
-	 */
-	public FixedThreadPoolBulkhead(String name, Supplier<ThreadPoolBulkheadConfig> configSupplier) {
-		this(name, configSupplier.get());
-	}
+        // init thread pool executor
+        this.executorService = new ThreadPoolExecutor(
+                // (CPU Number > 1) ? (CPU Number - 1) : 1;
+                config.getCoreThreadPoolSize(),
+                // CPU Number
+                config.getMaxThreadPoolSize(),
+                // 20ms
+                config.getKeepAliveDuration().toMillis(),
+                TimeUnit.MILLISECONDS,
+                // default-size: 100
+                new ArrayBlockingQueue<>(config.getQueueCapacity()),
+                new NamingThreadFactory(name));
 
-	/**
-	 * @param callable the callable to execute through bulk head thread pool
-	 * @param <T>      the result type
-	 * @return the callable returned result
-	 */
-	@Override
-	public <T> CompletableFuture<T> submit(Callable<T> callable) {
-		final CompletableFuture<T> promise = new CompletableFuture<>();
-		try {
-			CompletableFuture.supplyAsync(() -> {
-				try {
-					publishBulkheadEvent(() -> new BulkheadOnCallPermittedEvent(name));
-					return callable.call();
-				} catch (Exception e) {
-					throw new CompletionException(e);
-				}
-			}, executorService).whenComplete((result, throwable) -> {
-				publishBulkheadEvent(() -> new BulkheadOnCallFinishedEvent(name));
-				if (throwable != null) {
-					promise.completeExceptionally(throwable);
-				} else {
-					promise.complete(result);
-				}
-			});
-		} catch (RejectedExecutionException rejected) {
-			publishBulkheadEvent(() -> new BulkheadOnCallRejectedEvent(name));
-			throw new BulkheadFullException(this);
-		}
-		return promise;
-	}
+        // adding prover jvm executor shutdown
+        cleanup();
 
-	/**
-	 * @param runnable the runnable to execute through bulk head thread pool
-	 */
-	@Override
-	public void submit(Runnable runnable) {
-		try {
-			CompletableFuture.runAsync(() -> {
-				try {
-					publishBulkheadEvent(() -> new BulkheadOnCallPermittedEvent(name));
-					runnable.run();
-				} catch (Exception e) {
-					throw new CompletionException(e);
-				}
-			}, executorService).whenComplete((voidResult, throwable) -> publishBulkheadEvent(() -> new BulkheadOnCallFinishedEvent(name)));
-		} catch (RejectedExecutionException rejected) {
-			publishBulkheadEvent(() -> new BulkheadOnCallRejectedEvent(name));
-			throw new BulkheadFullException(this);
-		}
-	}
+        this.metrics = new FixedThreadPoolBulkhead.BulkheadMetrics();
+        this.eventProcessor = new FixedThreadPoolBulkhead.BulkheadEventProcessor();
+    }
 
-	/**
-	 * {@inheritDoc}
-	 */
-	@Override
-	public String getName() {
-		return this.name;
-	}
+    /**
+     * Creates a bulkhead with a default config.
+     *
+     * @param name the name of this bulkhead
+     */
+    public FixedThreadPoolBulkhead(String name) {
+        this(name, ThreadPoolBulkheadConfig.ofDefaults());
+    }
 
-	/**
-	 * {@inheritDoc}
-	 */
-	@Override
-	public ThreadPoolBulkheadConfig getBulkheadConfig() {
-		return config;
-	}
+    /**
+     * Create a bulkhead using a configuration supplier
+     *
+     * @param name           the name of this bulkhead
+     * @param configSupplier BulkheadConfig supplier
+     */
+    public FixedThreadPoolBulkhead(String name, Supplier<ThreadPoolBulkheadConfig> configSupplier) {
+        this(name, configSupplier.get());
+    }
 
-	/**
-	 * {@inheritDoc}
-	 */
-	@Override
-	public Metrics getMetrics() {
-		return metrics;
-	}
+    /**
+     * @param callable the callable to execute through bulk head thread pool
+     * @param <T>      the result type
+     * @return the callable returned result
+     */
+    @Override
+    public <T> CompletableFuture<T> submit(Callable<T> callable) {
+        final CompletableFuture<T> promise = new CompletableFuture<>();
+        try {
+            CompletableFuture.supplyAsync(() -> {
+                try {
+                    publishBulkheadEvent(() -> new BulkheadOnCallPermittedEvent(name));
+                    return callable.call();
+                } catch (Exception e) {
+                    throw new CompletionException(e);
+                }
+            }, executorService).whenComplete((result, throwable) -> {
+                publishBulkheadEvent(() -> new BulkheadOnCallFinishedEvent(name));
+                if (throwable != null) {
+                    promise.completeExceptionally(throwable);
+                } else {
+                    promise.complete(result);
+                }
+            });
+        } catch (RejectedExecutionException rejected) {
+            publishBulkheadEvent(() -> new BulkheadOnCallRejectedEvent(name));
+            throw new BulkheadFullException(this);
+        }
 
-	/**
-	 * {@inheritDoc}
-	 */
-	@Override
-	public ThreadPoolBulkheadEventPublisher getEventPublisher() {
-		return eventProcessor;
-	}
+        return promise;
+    }
 
-	private void publishBulkheadEvent(Supplier<BulkheadEvent> eventSupplier) {
-		if (eventProcessor.hasConsumers()) {
-			eventProcessor.consumeEvent(eventSupplier.get());
-		}
-	}
+    /**
+     * @param runnable the runnable to execute through bulk head thread pool
+     */
+    @Override
+    public void submit(Runnable runnable) {
+        try {
+            CompletableFuture.runAsync(() -> {
+                try {
+                    publishBulkheadEvent(() -> new BulkheadOnCallPermittedEvent(name));
+                    runnable.run();
+                } catch (Exception e) {
+                    throw new CompletionException(e);
+                }
+            }, executorService).whenComplete((voidResult, throwable) -> publishBulkheadEvent(() -> new BulkheadOnCallFinishedEvent(name)));
+        } catch (RejectedExecutionException rejected) {
+            publishBulkheadEvent(() -> new BulkheadOnCallRejectedEvent(name));
+            throw new BulkheadFullException(this);
+        }
+    }
 
-	@Override
-	public String toString() {
-		return String.format("FixedThreadPoolBulkhead '%s'", this.name);
-	}
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public String getName() {
+        return this.name;
+    }
 
-	private void cleanup() {
-		Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-			executorService.shutdown();
-			try {
-				if (!executorService.awaitTermination(5, TimeUnit.SECONDS)) {
-					executorService.shutdownNow();
-				}
-			} catch (InterruptedException e) {
-				if (!executorService.isTerminated()) {
-					executorService.shutdownNow();
-				}
-				Thread.currentThread().interrupt();
-			}
-		}));
-	}
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public ThreadPoolBulkheadConfig getBulkheadConfig() {
+        return config;
+    }
 
-	private class BulkheadEventProcessor extends EventProcessor<BulkheadEvent> implements ThreadPoolBulkheadEventPublisher, EventConsumer<BulkheadEvent> {
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Metrics getMetrics() {
+        return metrics;
+    }
 
-		@Override
-		public ThreadPoolBulkheadEventPublisher onCallPermitted(EventConsumer<BulkheadOnCallPermittedEvent> onCallPermittedEventConsumer) {
-			registerConsumer(BulkheadOnCallPermittedEvent.class.getSimpleName(), onCallPermittedEventConsumer);
-			return this;
-		}
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public ThreadPoolBulkheadEventPublisher getEventPublisher() {
+        return eventProcessor;
+    }
 
-		@Override
-		public ThreadPoolBulkheadEventPublisher onCallRejected(EventConsumer<BulkheadOnCallRejectedEvent> onCallRejectedEventConsumer) {
-			registerConsumer(BulkheadOnCallRejectedEvent.class.getSimpleName(), onCallRejectedEventConsumer);
-			return this;
-		}
+    private void publishBulkheadEvent(Supplier<BulkheadEvent> eventSupplier) {
+        if (eventProcessor.hasConsumers()) {
+            eventProcessor.consumeEvent(eventSupplier.get());
+        }
+    }
 
-		@Override
-		public ThreadPoolBulkheadEventPublisher onCallFinished(EventConsumer<BulkheadOnCallFinishedEvent> onCallFinishedEventConsumer) {
-			registerConsumer(BulkheadOnCallFinishedEvent.class.getSimpleName(), onCallFinishedEventConsumer);
-			return this;
-		}
+    @Override
+    public String toString() {
+        return String.format("FixedThreadPoolBulkhead '%s'", this.name);
+    }
 
-		@Override
-		public void consumeEvent(BulkheadEvent event) {
-			super.processEvent(event);
-		}
-	}
+    private void cleanup() {
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            executorService.shutdown();
+            try {
+                if (!executorService.awaitTermination(5, TimeUnit.SECONDS)) {
+                    executorService.shutdownNow();
+                }
+            } catch (InterruptedException e) {
+                if (!executorService.isTerminated()) {
+                    executorService.shutdownNow();
+                }
 
-	/**
-	 * the thread pool bulk head metrics
-	 */
-	private final class BulkheadMetrics implements Metrics {
-		private BulkheadMetrics() {
-		}
+                Thread.currentThread().interrupt();
+            }
+        }));
+    }
 
-		@Override
-		public int getCoreThreadPoolSize() {
-			return executorService.getCorePoolSize();
-		}
+    private class BulkheadEventProcessor extends EventProcessor<BulkheadEvent>
+            implements ThreadPoolBulkheadEventPublisher, EventConsumer<BulkheadEvent> {
 
-		@Override
-		public int getThreadPoolSize() {
-			return executorService.getPoolSize();
-		}
+        @Override
+        public ThreadPoolBulkheadEventPublisher onCallPermitted(EventConsumer<BulkheadOnCallPermittedEvent> onCallPermittedEventConsumer) {
+            registerConsumer(BulkheadOnCallPermittedEvent.class.getSimpleName(), onCallPermittedEventConsumer);
+            return this;
+        }
 
-		@Override
-		public int getMaximumThreadPoolSize() {
-			return executorService.getMaximumPoolSize();
-		}
+        @Override
+        public ThreadPoolBulkheadEventPublisher onCallRejected(EventConsumer<BulkheadOnCallRejectedEvent> onCallRejectedEventConsumer) {
+            registerConsumer(BulkheadOnCallRejectedEvent.class.getSimpleName(), onCallRejectedEventConsumer);
+            return this;
+        }
 
-		@Override
-		public int getQueueDepth() {
-			return executorService.getQueue().size();
-		}
+        @Override
+        public ThreadPoolBulkheadEventPublisher onCallFinished(EventConsumer<BulkheadOnCallFinishedEvent> onCallFinishedEventConsumer) {
+            registerConsumer(BulkheadOnCallFinishedEvent.class.getSimpleName(), onCallFinishedEventConsumer);
+            return this;
+        }
 
-		@Override
-		public int getRemainingQueueCapacity() {
-			return executorService.getQueue().remainingCapacity();
-		}
+        @Override
+        public void consumeEvent(BulkheadEvent event) {
+            super.processEvent(event);
+        }
+    }
 
-		@Override
-		public int getQueueCapacity() {
-			return config.getQueueCapacity();
-		}
-	}
+    /**
+     * the thread pool bulk head metrics
+     */
+    private final class BulkheadMetrics implements Metrics {
+
+        private BulkheadMetrics() {
+        }
+
+        @Override
+        public int getCoreThreadPoolSize() {
+            return executorService.getCorePoolSize();
+        }
+
+        @Override
+        public int getThreadPoolSize() {
+            return executorService.getPoolSize();
+        }
+
+        @Override
+        public int getMaximumThreadPoolSize() {
+            return executorService.getMaximumPoolSize();
+        }
+
+        @Override
+        public int getQueueDepth() {
+            return executorService.getQueue().size();
+        }
+
+        @Override
+        public int getRemainingQueueCapacity() {
+            return executorService.getQueue().remainingCapacity();
+        }
+
+        @Override
+        public int getQueueCapacity() {
+            return config.getQueueCapacity();
+        }
+    }
+
 }

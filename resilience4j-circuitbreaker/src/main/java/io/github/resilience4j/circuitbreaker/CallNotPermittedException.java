@@ -32,6 +32,7 @@ public class CallNotPermittedException extends RuntimeException {
     public CallNotPermittedException(CircuitBreaker circuitBreaker) {
         super(String.format("CircuitBreaker '%s' is %s and does not permit further calls", circuitBreaker.getName(), circuitBreaker.getState()));
     }
+
 }
 
 

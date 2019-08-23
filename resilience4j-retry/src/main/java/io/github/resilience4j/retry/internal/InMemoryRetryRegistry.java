@@ -33,65 +33,66 @@ import java.util.function.Supplier;
  */
 public final class InMemoryRetryRegistry extends AbstractRegistry<Retry, RetryConfig> implements RetryRegistry {
 
-	/**
-	 * The constructor with default default.
-	 */
-	public InMemoryRetryRegistry() {
-		this(RetryConfig.ofDefaults());
-	}
+    /**
+     * The constructor with default default.
+     */
+    public InMemoryRetryRegistry() {
+        this(RetryConfig.ofDefaults());
+    }
 
-	public InMemoryRetryRegistry(Map<String, RetryConfig> configs) {
-		this(configs.getOrDefault(DEFAULT_CONFIG, RetryConfig.ofDefaults()));
-		this.configurations.putAll(configs);
-	}
+    public InMemoryRetryRegistry(Map<String, RetryConfig> configs) {
+        this(configs.getOrDefault(DEFAULT_CONFIG, RetryConfig.ofDefaults()));
+        this.configurations.putAll(configs);
+    }
 
-	/**
-	 * The constructor with custom default config.
-	 *
-	 * @param defaultConfig The default config.
-	 */
-	public InMemoryRetryRegistry(RetryConfig defaultConfig) {
-		super(defaultConfig);
-	}
+    /**
+     * The constructor with custom default config.
+     *
+     * @param defaultConfig The default config.
+     */
+    public InMemoryRetryRegistry(RetryConfig defaultConfig) {
+        super(defaultConfig);
+    }
 
-	/**
-	 * {@inheritDoc}
-	 */
-	@Override
-	public Seq<Retry> getAllRetries() {
-		return Array.ofAll(entryMap.values());
-	}
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Seq<Retry> getAllRetries() {
+        return Array.ofAll(entryMap.values());
+    }
 
-	/**
-	 * {@inheritDoc}
-	 */
-	@Override
-	public Retry retry(String name) {
-		return retry(name, getDefaultConfig());
-	}
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Retry retry(String name) {
+        return retry(name, getDefaultConfig());
+    }
 
-	/**
-	 * {@inheritDoc}
-	 */
-	@Override
-	public Retry retry(String name, RetryConfig config) {
-		return computeIfAbsent(name, () -> Retry.of(name, Objects.requireNonNull(config, CONFIG_MUST_NOT_BE_NULL)));
-	}
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Retry retry(String name, RetryConfig config) {
+        return computeIfAbsent(name, () -> Retry.of(name, Objects.requireNonNull(config, CONFIG_MUST_NOT_BE_NULL)));
+    }
 
-	/**
-	 * {@inheritDoc}
-	 */
-	@Override
-	public Retry retry(String name, Supplier<RetryConfig> retryConfigSupplier) {
-		return computeIfAbsent(name, () -> Retry.of(name, Objects.requireNonNull(Objects.requireNonNull(retryConfigSupplier, SUPPLIER_MUST_NOT_BE_NULL).get(), CONFIG_MUST_NOT_BE_NULL)));
-	}
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Retry retry(String name, Supplier<RetryConfig> retryConfigSupplier) {
+        return computeIfAbsent(name, () -> Retry.of(name, Objects.requireNonNull(Objects.requireNonNull(retryConfigSupplier, SUPPLIER_MUST_NOT_BE_NULL).get(), CONFIG_MUST_NOT_BE_NULL)));
+    }
 
-	/**
-	 * {@inheritDoc}
-	 */
-	@Override
-	public Retry retry(String name, String configName) {
-		return computeIfAbsent(name, () -> Retry.of(name, getConfiguration(configName)
-				.orElseThrow(() -> new ConfigurationNotFoundException(configName))));
-	}
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Retry retry(String name, String configName) {
+        return computeIfAbsent(name, () -> Retry.of(name, getConfiguration(configName)
+                .orElseThrow(() -> new ConfigurationNotFoundException(configName))));
+    }
+    
 }

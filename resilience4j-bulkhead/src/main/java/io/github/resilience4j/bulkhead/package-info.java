@@ -22,3 +22,9 @@ package io.github.resilience4j.bulkhead;
 
 import io.github.resilience4j.core.lang.NonNullApi;
 import io.github.resilience4j.core.lang.NonNullFields;
+
+/**
+ * 隔离
+ * - 1.信号量, 固定信号量
+ * - 2.固定线程池, 通过现场队列控制 - 以异步方式执行
+ */

@@ -23,7 +23,7 @@ public class EntryAddedEvent<E> extends AbstractRegistryEvent {
 
     private E addedEntry;
 
-    EntryAddedEvent(E addedEntry){
+    EntryAddedEvent(E addedEntry) {
         this.addedEntry = addedEntry;
     }
 
@@ -35,4 +35,5 @@ public class EntryAddedEvent<E> extends AbstractRegistryEvent {
     public E getAddedEntry() {
         return addedEntry;
     }
+
 }

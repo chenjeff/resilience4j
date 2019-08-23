@@ -22,3 +22,10 @@ package io.github.resilience4j.ratelimiter;
 
 import io.github.resilience4j.core.lang.NonNullApi;
 import io.github.resilience4j.core.lang.NonNullFields;
+
+/**
+ * 限流 | 限速
+ * 1.timeoutDuration    超时时间    5s
+ * 2.limitRefreshPeriod 刷新周期    500ns
+ * 3.limitForPeriod     周期允许内访问量    50
+ */

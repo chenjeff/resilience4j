@@ -100,4 +100,5 @@ public interface RateLimiterRegistry extends Registry<RateLimiter, RateLimiterCo
     static RateLimiterRegistry of(Map<String, RateLimiterConfig> configs) {
         return new InMemoryRateLimiterRegistry(configs);
     }
+
 }

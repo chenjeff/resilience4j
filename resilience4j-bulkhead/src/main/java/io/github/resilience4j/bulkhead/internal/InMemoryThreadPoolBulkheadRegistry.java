@@ -34,67 +34,70 @@ import java.util.function.Supplier;
  * Thread pool Bulkhead instance manager;
  * Constructs/returns thread pool bulkhead instances.
  */
-public final class InMemoryThreadPoolBulkheadRegistry extends AbstractRegistry<ThreadPoolBulkhead, ThreadPoolBulkheadConfig> implements ThreadPoolBulkheadRegistry {
+public final class InMemoryThreadPoolBulkheadRegistry
+        extends AbstractRegistry<ThreadPoolBulkhead, ThreadPoolBulkheadConfig>
+        implements ThreadPoolBulkheadRegistry {
 
-	/**
-	 * The constructor with default default.
-	 */
-	public InMemoryThreadPoolBulkheadRegistry() {
-		this(ThreadPoolBulkheadConfig.ofDefaults());
-	}
+    /**
+     * The constructor with default default.
+     */
+    public InMemoryThreadPoolBulkheadRegistry() {
+        this(ThreadPoolBulkheadConfig.ofDefaults());
+    }
 
-	public InMemoryThreadPoolBulkheadRegistry(Map<String, ThreadPoolBulkheadConfig> configs) {
-		this(configs.getOrDefault(DEFAULT_CONFIG, ThreadPoolBulkheadConfig.ofDefaults()));
-		this.configurations.putAll(configs);
-	}
+    public InMemoryThreadPoolBulkheadRegistry(Map<String, ThreadPoolBulkheadConfig> configs) {
+        this(configs.getOrDefault(DEFAULT_CONFIG, ThreadPoolBulkheadConfig.ofDefaults()));
+        this.configurations.putAll(configs);
+    }
 
-	/**
-	 * The constructor with custom default config.
-	 *
-	 * @param defaultConfig The default config.
-	 */
-	public InMemoryThreadPoolBulkheadRegistry(ThreadPoolBulkheadConfig defaultConfig) {
-		super(defaultConfig);
-	}
+    /**
+     * The constructor with custom default config.
+     *
+     * @param defaultConfig The default config.
+     */
+    public InMemoryThreadPoolBulkheadRegistry(ThreadPoolBulkheadConfig defaultConfig) {
+        super(defaultConfig);
+    }
 
-	/**
-	 * {@inheritDoc}
-	 */
-	@Override
-	public Seq<ThreadPoolBulkhead> getAllBulkheads() {
-		return Array.ofAll(entryMap.values());
-	}
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Seq<ThreadPoolBulkhead> getAllBulkheads() {
+        return Array.ofAll(entryMap.values());
+    }
 
-	/**
-	 * {@inheritDoc}
-	 */
-	@Override
-	public ThreadPoolBulkhead bulkhead(String name) {
-		return bulkhead(name, getDefaultConfig());
-	}
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public ThreadPoolBulkhead bulkhead(String name) {
+        return bulkhead(name, getDefaultConfig());
+    }
 
-	/**
-	 * {@inheritDoc}
-	 */
-	@Override
-	public ThreadPoolBulkhead bulkhead(String name, ThreadPoolBulkheadConfig config) {
-		return computeIfAbsent(name, () -> ThreadPoolBulkhead.of(name, Objects.requireNonNull(config, CONFIG_MUST_NOT_BE_NULL)));
-	}
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public ThreadPoolBulkhead bulkhead(String name, ThreadPoolBulkheadConfig config) {
+        return computeIfAbsent(name, () -> ThreadPoolBulkhead.of(name, Objects.requireNonNull(config, CONFIG_MUST_NOT_BE_NULL)));
+    }
 
-	/**
-	 * {@inheritDoc}
-	 */
-	@Override
-	public ThreadPoolBulkhead bulkhead(String name, Supplier<ThreadPoolBulkheadConfig> bulkheadConfigSupplier) {
-		return computeIfAbsent(name, () -> ThreadPoolBulkhead.of(name, Objects.requireNonNull(Objects.requireNonNull(bulkheadConfigSupplier, SUPPLIER_MUST_NOT_BE_NULL).get(), CONFIG_MUST_NOT_BE_NULL)));
-	}
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public ThreadPoolBulkhead bulkhead(String name, Supplier<ThreadPoolBulkheadConfig> bulkheadConfigSupplier) {
+        return computeIfAbsent(name, () -> ThreadPoolBulkhead.of(name, Objects.requireNonNull(Objects.requireNonNull(bulkheadConfigSupplier, SUPPLIER_MUST_NOT_BE_NULL).get(), CONFIG_MUST_NOT_BE_NULL)));
+    }
 
-	/**
-	 * {@inheritDoc}
-	 */
-	@Override
-	public ThreadPoolBulkhead bulkhead(String name, String configName) {
-		return computeIfAbsent(name, () -> ThreadPoolBulkhead.of(name, getConfiguration(configName)
-				.orElseThrow(() -> new ConfigurationNotFoundException(configName))));
-	}
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public ThreadPoolBulkhead bulkhead(String name, String configName) {
+        return computeIfAbsent(name, () -> ThreadPoolBulkhead.of(name, getConfiguration(configName)
+                .orElseThrow(() -> new ConfigurationNotFoundException(configName))));
+    }
+
 }

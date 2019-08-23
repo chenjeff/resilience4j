@@ -44,4 +44,5 @@ import java.lang.annotation.*;
 @Nonnull
 @TypeQualifierNickname
 public @interface NonNull {
+
 }

@@ -38,4 +38,5 @@ public class CircuitBreakerOnCallNotPermittedEvent extends AbstractCircuitBreake
                 getCreationTime(),
                 getCircuitBreakerName());
     }
+
 }

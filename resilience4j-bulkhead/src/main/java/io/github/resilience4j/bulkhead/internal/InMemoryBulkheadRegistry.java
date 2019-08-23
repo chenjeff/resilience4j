@@ -36,65 +36,66 @@ import java.util.function.Supplier;
  */
 public final class InMemoryBulkheadRegistry extends AbstractRegistry<Bulkhead, BulkheadConfig> implements BulkheadRegistry {
 
-	/**
-	 * The constructor with default default.
-	 */
-	public InMemoryBulkheadRegistry() {
-		this(BulkheadConfig.ofDefaults());
-	}
+    /**
+     * The constructor with default default.
+     */
+    public InMemoryBulkheadRegistry() {
+        this(BulkheadConfig.ofDefaults());
+    }
 
-	public InMemoryBulkheadRegistry(Map<String, BulkheadConfig> configs) {
-		this(configs.getOrDefault(DEFAULT_CONFIG, BulkheadConfig.ofDefaults()));
-		this.configurations.putAll(configs);
-	}
+    public InMemoryBulkheadRegistry(Map<String, BulkheadConfig> configs) {
+        this(configs.getOrDefault(DEFAULT_CONFIG, BulkheadConfig.ofDefaults()));
+        this.configurations.putAll(configs);
+    }
 
-	/**
-	 * The constructor with custom default config.
-	 *
-	 * @param defaultConfig The default config.
-	 */
-	public InMemoryBulkheadRegistry(BulkheadConfig defaultConfig) {
-		super(defaultConfig);
-	}
+    /**
+     * The constructor with custom default config.
+     *
+     * @param defaultConfig The default config.
+     */
+    public InMemoryBulkheadRegistry(BulkheadConfig defaultConfig) {
+        super(defaultConfig);
+    }
 
-	/**
-	 * {@inheritDoc}
-	 */
-	@Override
-	public Seq<Bulkhead> getAllBulkheads() {
-		return Array.ofAll(entryMap.values());
-	}
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Seq<Bulkhead> getAllBulkheads() {
+        return Array.ofAll(entryMap.values());
+    }
 
-	/**
-	 * {@inheritDoc}
-	 */
-	@Override
-	public Bulkhead bulkhead(String name) {
-		return bulkhead(name, getDefaultConfig());
-	}
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Bulkhead bulkhead(String name) {
+        return bulkhead(name, getDefaultConfig());
+    }
 
-	/**
-	 * {@inheritDoc}
-	 */
-	@Override
-	public Bulkhead bulkhead(String name, BulkheadConfig config) {
-		return computeIfAbsent(name, () -> Bulkhead.of(name, Objects.requireNonNull(config, CONFIG_MUST_NOT_BE_NULL)));
-	}
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Bulkhead bulkhead(String name, BulkheadConfig config) {
+        return computeIfAbsent(name, () -> Bulkhead.of(name, Objects.requireNonNull(config, CONFIG_MUST_NOT_BE_NULL)));
+    }
 
-	/**
-	 * {@inheritDoc}
-	 */
-	@Override
-	public Bulkhead bulkhead(String name, Supplier<BulkheadConfig> bulkheadConfigSupplier) {
-		return computeIfAbsent(name, () -> Bulkhead.of(name, Objects.requireNonNull(Objects.requireNonNull(bulkheadConfigSupplier, SUPPLIER_MUST_NOT_BE_NULL).get(), CONFIG_MUST_NOT_BE_NULL)));
-	}
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Bulkhead bulkhead(String name, Supplier<BulkheadConfig> bulkheadConfigSupplier) {
+        return computeIfAbsent(name, () -> Bulkhead.of(name, Objects.requireNonNull(Objects.requireNonNull(bulkheadConfigSupplier, SUPPLIER_MUST_NOT_BE_NULL).get(), CONFIG_MUST_NOT_BE_NULL)));
+    }
 
-	/**
-	 * {@inheritDoc}
-	 */
-	@Override
-	public Bulkhead bulkhead(String name, String configName) {
-		return computeIfAbsent(name, () -> Bulkhead.of(name, getConfiguration(configName)
-				.orElseThrow(() -> new ConfigurationNotFoundException(configName))));
-	}
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Bulkhead bulkhead(String name, String configName) {
+        return computeIfAbsent(name, () -> Bulkhead.of(name, getConfiguration(configName)
+                .orElseThrow(() -> new ConfigurationNotFoundException(configName))));
+    }
+
 }

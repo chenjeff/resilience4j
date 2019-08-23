@@ -38,296 +38,307 @@ import java.util.function.Supplier;
 
 public class RetryImpl<T> implements Retry {
 
-
-	/*package*/ static CheckedConsumer<Long> sleepFunction = Thread::sleep;
-	private final Metrics metrics;
-	private final RetryEventProcessor eventProcessor;
+    /* package */ static CheckedConsumer<Long> sleepFunction = Thread::sleep;
+    private final Metrics metrics;
+    private final RetryEventProcessor eventProcessor;
     @Nullable
-	private final Predicate<T> resultPredicate;
+    private final Predicate<T> resultPredicate;
+
     private final String name;
     private final RetryConfig config;
 
     private final int maxAttempts;
     private final Function<Integer, Long> intervalFunction;
     private final Predicate<Throwable> exceptionPredicate;
+
     private final LongAdder succeededAfterRetryCounter;
     private final LongAdder failedAfterRetryCounter;
     private final LongAdder succeededWithoutRetryCounter;
     private final LongAdder failedWithoutRetryCounter;
 
-	public RetryImpl(String name, RetryConfig config) {
-		this.name = name;
-		this.config = config;
-		this.maxAttempts = config.getMaxAttempts();
-		this.intervalFunction = config.getIntervalFunction();
-		this.exceptionPredicate = config.getExceptionPredicate();
-		this.resultPredicate = config.getResultPredicate();
-		this.metrics = this.new RetryMetrics();
-		this.eventProcessor = new RetryEventProcessor();
-		succeededAfterRetryCounter = new LongAdder();
-		failedAfterRetryCounter = new LongAdder();
-		succeededWithoutRetryCounter = new LongAdder();
-		failedWithoutRetryCounter = new LongAdder();
-	}
+    public RetryImpl(String name, RetryConfig config) {
+        this.name = name;
+        this.config = config;
 
-	/**
-	 * {@inheritDoc}
-	 */
-	@Override
-	public String getName() {
-		return name;
-	}
+        this.maxAttempts = config.getMaxAttempts();
+        this.intervalFunction = config.getIntervalFunction();
+        this.exceptionPredicate = config.getExceptionPredicate();
 
-	@Override
-	@SuppressWarnings("unchecked")
-	public Context context() {
-		return new ContextImpl();
-	}
+        this.resultPredicate = config.getResultPredicate();
+        this.metrics = this.new RetryMetrics();
+        this.eventProcessor = new RetryEventProcessor();
 
-	@Override
-	@SuppressWarnings("unchecked")
-	public AsyncContext asyncContext() {
-		return new AsyncContextImpl();
-	}
+        succeededAfterRetryCounter = new LongAdder();
+        failedAfterRetryCounter = new LongAdder();
+        succeededWithoutRetryCounter = new LongAdder();
+        failedWithoutRetryCounter = new LongAdder();
+    }
 
-	@Override
-	public RetryConfig getRetryConfig() {
-		return config;
-	}
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public String getName() {
+        return name;
+    }
 
-	private void publishRetryEvent(Supplier<RetryEvent> event) {
-		if (eventProcessor.hasConsumers()) {
-			eventProcessor.consumeEvent(event.get());
-		}
-	}
+    @Override
+    @SuppressWarnings("unchecked")
+    public Context context() {
+        return new ContextImpl();
+    }
 
-	@Override
-	public EventPublisher getEventPublisher() {
-		return eventProcessor;
-	}
+    @Override
+    @SuppressWarnings("unchecked")
+    public AsyncContext asyncContext() {
+        return new AsyncContextImpl();
+    }
 
-	/**
-	 * {@inheritDoc}
-	 */
-	@Override
-	public Metrics getMetrics() {
-		return this.metrics;
-	}
+    @Override
+    public RetryConfig getRetryConfig() {
+        return config;
+    }
 
-	public final class ContextImpl implements Retry.Context<T> {
+    private void publishRetryEvent(Supplier<RetryEvent> event) {
+        if (eventProcessor.hasConsumers()) {
+            eventProcessor.consumeEvent(event.get());
+        }
+    }
 
-		private final AtomicInteger numOfAttempts = new AtomicInteger(0);
-		private final AtomicReference<Exception> lastException = new AtomicReference<>();
-		private final AtomicReference<RuntimeException> lastRuntimeException = new AtomicReference<>();
+    @Override
+    public EventPublisher getEventPublisher() {
+        return eventProcessor;
+    }
 
-		private ContextImpl() {
-		}
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Metrics getMetrics() {
+        return this.metrics;
+    }
 
-        @Override
-		public void onSuccess() {
-			int currentNumOfAttempts = numOfAttempts.get();
-			if (currentNumOfAttempts > 0) {
-				succeededAfterRetryCounter.increment();
-				Throwable throwable = Option.of(lastException.get()).getOrElse(lastRuntimeException.get());
-				publishRetryEvent(() -> new RetryOnSuccessEvent(getName(), currentNumOfAttempts, throwable));
-			} else {
-				succeededWithoutRetryCounter.increment();
-			}
-		}
+    public final class ContextImpl implements Retry.Context<T> {
+
+        private final AtomicInteger numOfAttempts = new AtomicInteger(0);
+        private final AtomicReference<Exception> lastException = new AtomicReference<>();
+        private final AtomicReference<RuntimeException> lastRuntimeException = new AtomicReference<>();
+
+        private ContextImpl() {
+        }
 
         @Override
-		public boolean onResult(T result) {
-			if (null != resultPredicate && resultPredicate.test(result)) {
-				int currentNumOfAttempts = numOfAttempts.incrementAndGet();
-				if (currentNumOfAttempts >= maxAttempts) {
-					return false;
-				} else {
-					waitIntervalAfterFailure(currentNumOfAttempts, null);
-					return true;
-				}
-			}
-			return false;
-		}
-
-		@Override
-		public void onError(Exception exception) throws Exception {
-			if (exceptionPredicate.test(exception)) {
-				lastException.set(exception);
-				throwOrSleepAfterException();
-			} else {
-				failedWithoutRetryCounter.increment();
-				publishRetryEvent(() -> new RetryOnIgnoredErrorEvent(getName(), exception));
-				throw exception;
-			}
-		}
+        public void onSuccess() {
+            int currentNumOfAttempts = numOfAttempts.get();
+            if (currentNumOfAttempts > 0) {
+                succeededAfterRetryCounter.increment();
+                Throwable throwable = Option.of(lastException.get()).getOrElse(lastRuntimeException.get());
+                publishRetryEvent(() -> new RetryOnSuccessEvent(getName(), currentNumOfAttempts, throwable));
+            } else {
+                succeededWithoutRetryCounter.increment();
+            }
+        }
 
         @Override
-		public void onRuntimeError(RuntimeException runtimeException) {
-			if (exceptionPredicate.test(runtimeException)) {
-				lastRuntimeException.set(runtimeException);
-				throwOrSleepAfterRuntimeException();
-			} else {
-				failedWithoutRetryCounter.increment();
-				publishRetryEvent(() -> new RetryOnIgnoredErrorEvent(getName(), runtimeException));
-				throw runtimeException;
-			}
-		}
+        public boolean onResult(T result) {
+            if (null != resultPredicate && resultPredicate.test(result)) {
+                int currentNumOfAttempts = numOfAttempts.incrementAndGet();
+                if (currentNumOfAttempts >= maxAttempts) {
+                    return false;
+                } else {
+                    waitIntervalAfterFailure(currentNumOfAttempts, null);
+                    return true;
+                }
+            }
 
-		private void throwOrSleepAfterException() throws Exception {
-			int currentNumOfAttempts = numOfAttempts.incrementAndGet();
-			Exception throwable = lastException.get();
-			if (currentNumOfAttempts >= maxAttempts) {
-				failedAfterRetryCounter.increment();
-				publishRetryEvent(() -> new RetryOnErrorEvent(getName(), currentNumOfAttempts, throwable));
-				throw throwable;
-			} else {
-				waitIntervalAfterFailure(currentNumOfAttempts, throwable);
-			}
-		}
+            return false;
+        }
 
-		private void throwOrSleepAfterRuntimeException() {
-			int currentNumOfAttempts = numOfAttempts.incrementAndGet();
-			RuntimeException throwable = lastRuntimeException.get();
-			if (currentNumOfAttempts >= maxAttempts) {
-				failedAfterRetryCounter.increment();
-				publishRetryEvent(() -> new RetryOnErrorEvent(getName(), currentNumOfAttempts, throwable));
-				throw throwable;
-			} else {
-				waitIntervalAfterFailure(currentNumOfAttempts, throwable);
-			}
-		}
+        @Override
+        public void onError(Exception exception) throws Exception {
+            if (exceptionPredicate.test(exception)) {
+                lastException.set(exception);
+                throwOrSleepAfterException();
+            } else {
+                failedWithoutRetryCounter.increment();
+                publishRetryEvent(() -> new RetryOnIgnoredErrorEvent(getName(), exception));
+                throw exception;
+            }
+        }
 
-        private void waitIntervalAfterFailure(int currentNumOfAttempts,@Nullable Throwable throwable) {
-			// wait interval until the next attempt should start
-			long interval = intervalFunction.apply(numOfAttempts.get());
-			publishRetryEvent(() -> new RetryOnRetryEvent(getName(), currentNumOfAttempts, throwable, interval));
-			Try.run(() -> sleepFunction.accept(interval))
-					.getOrElseThrow(ex -> lastRuntimeException.get());
-		}
+        @Override
+        public void onRuntimeError(RuntimeException runtimeException) {
+            if (exceptionPredicate.test(runtimeException)) {
+                lastRuntimeException.set(runtimeException);
+                throwOrSleepAfterRuntimeException();
+            } else {
+                failedWithoutRetryCounter.increment();
+                publishRetryEvent(() -> new RetryOnIgnoredErrorEvent(getName(), runtimeException));
+                throw runtimeException;
+            }
+        }
 
-	}
+        private void throwOrSleepAfterException() throws Exception {
+            int currentNumOfAttempts = numOfAttempts.incrementAndGet();
+            Exception throwable = lastException.get();
+            if (currentNumOfAttempts >= maxAttempts) {
+                failedAfterRetryCounter.increment();
+                publishRetryEvent(() -> new RetryOnErrorEvent(getName(), currentNumOfAttempts, throwable));
+                throw throwable;
+            } else {
+                waitIntervalAfterFailure(currentNumOfAttempts, throwable);
+            }
+        }
 
-	public final class AsyncContextImpl implements Retry.AsyncContext<T> {
+        private void throwOrSleepAfterRuntimeException() {
+            int currentNumOfAttempts = numOfAttempts.incrementAndGet();
+            RuntimeException throwable = lastRuntimeException.get();
+            if (currentNumOfAttempts >= maxAttempts) {
+                failedAfterRetryCounter.increment();
+                publishRetryEvent(() -> new RetryOnErrorEvent(getName(), currentNumOfAttempts, throwable));
+                throw throwable;
+            } else {
+                waitIntervalAfterFailure(currentNumOfAttempts, throwable);
+            }
+        }
 
-		private final AtomicInteger numOfAttempts = new AtomicInteger(0);
-		private final AtomicReference<Throwable> lastException = new AtomicReference<>();
+        private void waitIntervalAfterFailure(int currentNumOfAttempts, @Nullable Throwable throwable) {
+            // wait interval until the next attempt should start
+            long interval = intervalFunction.apply(numOfAttempts.get());
+            publishRetryEvent(() -> new RetryOnRetryEvent(getName(), currentNumOfAttempts, throwable, interval));
+            Try.run(() -> sleepFunction.accept(interval)).getOrElseThrow(ex -> lastRuntimeException.get());
+        }
 
-		@Override
-		public void onSuccess() {
-			int currentNumOfAttempts = numOfAttempts.get();
-			if (currentNumOfAttempts > 0) {
-				succeededAfterRetryCounter.increment();
-				publishRetryEvent(() -> new RetryOnSuccessEvent(name, currentNumOfAttempts, lastException.get()));
-			} else {
-				succeededWithoutRetryCounter.increment();
-			}
-		}
+    }
 
-		@Override
-		public long onError(Throwable throwable) {
-			// Handle the case if the completable future throw CompletionException wrapping the original exception
-			// where original exception is the the one to retry not the CompletionException.
-			if (throwable instanceof CompletionException) {
-				Throwable cause = throwable.getCause();
-				return handleThrowable(cause);
-		}
-			else {
-				return handleThrowable(throwable);
-			}
+    public final class AsyncContextImpl implements Retry.AsyncContext<T> {
 
-		}
+        private final AtomicInteger numOfAttempts = new AtomicInteger(0);
+        private final AtomicReference<Throwable> lastException = new AtomicReference<>();
 
-		private long handleThrowable(Throwable throwable) {
-			if (!exceptionPredicate.test(throwable)) {
-				failedWithoutRetryCounter.increment();
-				publishRetryEvent(() -> new RetryOnIgnoredErrorEvent(getName(), throwable));
-				return -1;
-			}
-			return handleOnError(throwable);
-		}
+        @Override
+        public void onSuccess() {
+            int currentNumOfAttempts = numOfAttempts.get();
+            if (currentNumOfAttempts > 0) {
+                succeededAfterRetryCounter.increment();
+                publishRetryEvent(() -> new RetryOnSuccessEvent(name, currentNumOfAttempts, lastException.get()));
+            } else {
+                succeededWithoutRetryCounter.increment();
+            }
+        }
 
-		private long handleOnError(Throwable throwable) {
-			lastException.set(throwable);
-			int attempt = numOfAttempts.incrementAndGet();
-			if (attempt >= maxAttempts) {
-				failedAfterRetryCounter.increment();
-				publishRetryEvent(() -> new RetryOnErrorEvent(name, attempt, throwable));
-				return -1;
-			}
+        @Override
+        public long onError(Throwable throwable) {
+            // Handle the case if the completable future throw CompletionException wrapping the original exception
+            // where original exception is the the one to retry not the CompletionException.
+            if (throwable instanceof CompletionException) {
+                Throwable cause = throwable.getCause();
+                return handleThrowable(cause);
+            } else {
+                return handleThrowable(throwable);
+            }
+        }
 
-			long interval = intervalFunction.apply(attempt);
-			publishRetryEvent(() -> new RetryOnRetryEvent(getName(), attempt, throwable, interval));
-			return interval;
-		}
+        private long handleThrowable(Throwable throwable) {
+            if (!exceptionPredicate.test(throwable)) {
+                failedWithoutRetryCounter.increment();
+                publishRetryEvent(() -> new RetryOnIgnoredErrorEvent(getName(), throwable));
 
-		@Override
-		public long onResult(T result) {
-			if (null != resultPredicate && resultPredicate.test(result)) {
-				int attempt = numOfAttempts.incrementAndGet();
-				if (attempt >= maxAttempts) {
-					return -1;
-				}
-				return intervalFunction.apply(attempt);
-			} else {
-				return -1;
-			}
-		}
-	}
+                return -1;
+            }
 
-	public final class RetryMetrics implements Metrics {
-		private RetryMetrics() {
-		}
+            return handleOnError(throwable);
+        }
 
-		@Override
-		public long getNumberOfSuccessfulCallsWithoutRetryAttempt() {
-			return succeededWithoutRetryCounter.longValue();
-		}
+        private long handleOnError(Throwable throwable) {
+            lastException.set(throwable);
+            int attempt = numOfAttempts.incrementAndGet();
+            if (attempt >= maxAttempts) {
+                failedAfterRetryCounter.increment();
+                publishRetryEvent(() -> new RetryOnErrorEvent(name, attempt, throwable));
 
-		@Override
-		public long getNumberOfFailedCallsWithoutRetryAttempt() {
-			return failedWithoutRetryCounter.longValue();
-		}
+                return -1;
+            }
 
-		@Override
-		public long getNumberOfSuccessfulCallsWithRetryAttempt() {
-			return succeededAfterRetryCounter.longValue();
-		}
+            long interval = intervalFunction.apply(attempt);
+            publishRetryEvent(() -> new RetryOnRetryEvent(getName(), attempt, throwable, interval));
 
-		@Override
-		public long getNumberOfFailedCallsWithRetryAttempt() {
-			return failedAfterRetryCounter.longValue();
-		}
-	}
+            return interval;
+        }
 
-	private class RetryEventProcessor extends EventProcessor<RetryEvent> implements EventConsumer<RetryEvent>, EventPublisher {
+        @Override
+        public long onResult(T result) {
+            if (null != resultPredicate && resultPredicate.test(result)) {
+                int attempt = numOfAttempts.incrementAndGet();
+                if (attempt >= maxAttempts) {
+                    return -1;
+                }
 
-		@Override
-		public void consumeEvent(RetryEvent event) {
-			super.processEvent(event);
-		}
+                return intervalFunction.apply(attempt);
+            } else {
+                return -1;
+            }
+        }
+    }
 
-		@Override
-		public EventPublisher onRetry(EventConsumer<RetryOnRetryEvent> onRetryEventConsumer) {
-			registerConsumer(RetryOnRetryEvent.class.getSimpleName(), onRetryEventConsumer);
-			return this;
-		}
+    public final class RetryMetrics implements Metrics {
 
-		@Override
-		public EventPublisher onSuccess(EventConsumer<RetryOnSuccessEvent> onSuccessEventConsumer) {
-			registerConsumer(RetryOnSuccessEvent.class.getSimpleName(), onSuccessEventConsumer);
-			return this;
-		}
+        private RetryMetrics() {
+        }
 
-		@Override
-		public EventPublisher onError(EventConsumer<RetryOnErrorEvent> onErrorEventConsumer) {
-			registerConsumer(RetryOnErrorEvent.class.getSimpleName(), onErrorEventConsumer);
-			return this;
-		}
+        @Override
+        public long getNumberOfSuccessfulCallsWithoutRetryAttempt() {
+            return succeededWithoutRetryCounter.longValue();
+        }
 
-		@Override
-		public EventPublisher onIgnoredError(EventConsumer<RetryOnIgnoredErrorEvent> onIgnoredErrorEventConsumer) {
-			registerConsumer(RetryOnIgnoredErrorEvent.class.getSimpleName(), onIgnoredErrorEventConsumer);
-			return this;
-		}
-	}
+        @Override
+        public long getNumberOfFailedCallsWithoutRetryAttempt() {
+            return failedWithoutRetryCounter.longValue();
+        }
+
+        @Override
+        public long getNumberOfSuccessfulCallsWithRetryAttempt() {
+            return succeededAfterRetryCounter.longValue();
+        }
+
+        @Override
+        public long getNumberOfFailedCallsWithRetryAttempt() {
+            return failedAfterRetryCounter.longValue();
+        }
+
+    }
+
+    private class RetryEventProcessor extends EventProcessor<RetryEvent> implements EventConsumer<RetryEvent>, EventPublisher {
+
+        @Override
+        public void consumeEvent(RetryEvent event) {
+            super.processEvent(event);
+        }
+
+        @Override
+        public EventPublisher onRetry(EventConsumer<RetryOnRetryEvent> onRetryEventConsumer) {
+            registerConsumer(RetryOnRetryEvent.class.getSimpleName(), onRetryEventConsumer);
+            return this;
+        }
+
+        @Override
+        public EventPublisher onSuccess(EventConsumer<RetryOnSuccessEvent> onSuccessEventConsumer) {
+            registerConsumer(RetryOnSuccessEvent.class.getSimpleName(), onSuccessEventConsumer);
+            return this;
+        }
+
+        @Override
+        public EventPublisher onError(EventConsumer<RetryOnErrorEvent> onErrorEventConsumer) {
+            registerConsumer(RetryOnErrorEvent.class.getSimpleName(), onErrorEventConsumer);
+            return this;
+        }
+
+        @Override
+        public EventPublisher onIgnoredError(EventConsumer<RetryOnIgnoredErrorEvent> onIgnoredErrorEventConsumer) {
+            registerConsumer(RetryOnIgnoredErrorEvent.class.getSimpleName(), onIgnoredErrorEventConsumer);
+            return this;
+        }
+
+    }
+
 }

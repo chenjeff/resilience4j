@@ -47,10 +47,10 @@ public interface TimeLimiter {
     /**
      * Creates a Callback that is restricted by a TimeLimiter.
      *
-     * @param timeLimiter        the TimeLimiter
-     * @param futureSupplier     the original future supplier
-     * @param <T> the type of results supplied by the supplier
-     * @param <F> the future type supplied
+     * @param timeLimiter    the TimeLimiter
+     * @param futureSupplier the original future supplier
+     * @param <T>            the type of results supplied by the supplier
+     * @param <F>            the future type supplied
      * @return a future supplier which is restricted by a {@link TimeLimiter}.
      */
     static <T, F extends Future<T>> Callable<T> decorateFutureSupplier(TimeLimiter timeLimiter, Supplier<F> futureSupplier) {
@@ -59,16 +59,16 @@ public interface TimeLimiter {
             try {
                 return future.get(timeLimiter.getTimeLimiterConfig().getTimeoutDuration().toMillis(), TimeUnit.MILLISECONDS);
             } catch (TimeoutException e) {
-                if(timeLimiter.getTimeLimiterConfig().shouldCancelRunningFuture()){
+                if (timeLimiter.getTimeLimiterConfig().shouldCancelRunningFuture()) {
                     future.cancel(true);
                 }
                 throw e;
-            } catch (ExecutionException e){
+            } catch (ExecutionException e) {
                 Throwable t = e.getCause();
-                if (t == null){
+                if (t == null) {
                     throw e;
                 }
-                if (t instanceof Error){
+                if (t instanceof Error) {
                     throw (Error) t;
                 }
                 throw (Exception) t;
@@ -87,8 +87,8 @@ public interface TimeLimiter {
      * Decorates and executes the Future Supplier.
      *
      * @param futureSupplier the original future supplier
-     * @param <T> the result type of the future
-     * @param <F> the type of Future
+     * @param <T>            the result type of the future
+     * @param <F>            the type of Future
      * @return the result of the Future.
      * @throws Exception if unable to compute a result
      */
@@ -100,11 +100,12 @@ public interface TimeLimiter {
      * Creates a Callback that is restricted by a TimeLimiter.
      *
      * @param futureSupplier the original future supplier
-     * @param <T> the type of results supplied by the supplier
-     * @param <F> the future type supplied
+     * @param <T>            the type of results supplied by the supplier
+     * @param <F>            the future type supplied
      * @return a future supplier which is restricted by a {@link TimeLimiter}.
      */
     default <T, F extends Future<T>> Callable<T> decorateFutureSupplier(Supplier<F> futureSupplier) {
         return decorateFutureSupplier(this, futureSupplier);
     }
+
 }

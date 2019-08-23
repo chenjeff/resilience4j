@@ -29,13 +29,16 @@ class NamingThreadFactory implements ThreadFactory {
         if (thread.isDaemon()) {
             thread.setDaemon(false);
         }
+
         if (thread.getPriority() != Thread.NORM_PRIORITY) {
             thread.setPriority(Thread.NORM_PRIORITY);
         }
+
         return thread;
     }
 
     private String createName() {
         return prefix + threadNumber.getAndIncrement();
     }
+
 }

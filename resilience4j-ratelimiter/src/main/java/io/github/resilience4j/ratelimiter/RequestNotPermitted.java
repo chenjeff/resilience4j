@@ -32,4 +32,5 @@ public class RequestNotPermitted extends RuntimeException {
     public RequestNotPermitted(RateLimiter rateLimiter) {
         super(String.format("RateLimiter '%s' does not permit further calls", rateLimiter.getName()));
     }
+
 }

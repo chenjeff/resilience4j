@@ -41,4 +41,5 @@ public class RetryOnSuccessEvent extends AbstractRetryEvent {
                 getNumberOfRetryAttempts(),
                 getLastThrowable() != null ? getLastThrowable().toString() : "null");
     }
+    
 }

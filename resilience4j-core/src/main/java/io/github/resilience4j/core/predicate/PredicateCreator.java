@@ -6,15 +6,16 @@ import java.util.function.Predicate;
 
 public class PredicateCreator {
 
-    private PredicateCreator() {}
+    private PredicateCreator() {
+    }
 
     @SafeVarargs
-    public static Optional<Predicate<Throwable>> createRecordExceptionsPredicate(Class<? extends Throwable> ...recordExceptions) {
+    public static Optional<Predicate<Throwable>> createRecordExceptionsPredicate(Class<? extends Throwable>... recordExceptions) {
         return exceptionPredicate(recordExceptions);
     }
 
     @SafeVarargs
-    public static Optional<Predicate<Throwable>> createIgnoreExceptionsPredicate(Class<? extends Throwable> ...ignoreExceptions) {
+    public static Optional<Predicate<Throwable>> createIgnoreExceptionsPredicate(Class<? extends Throwable>... ignoreExceptions) {
         return exceptionPredicate(ignoreExceptions)
                 .map(Predicate::negate);
     }
@@ -29,4 +30,5 @@ public class PredicateCreator {
     private static Predicate<Throwable> makePredicate(Class<? extends Throwable> exClass) {
         return (Throwable e) -> exClass.isAssignableFrom(e.getClass());
     }
+
 }

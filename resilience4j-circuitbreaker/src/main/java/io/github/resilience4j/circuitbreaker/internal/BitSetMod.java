@@ -29,10 +29,13 @@ class BitSetMod {
     private final int size;
     private final long[] words;
 
-
     BitSetMod(final int capacity) {
+        // 1 2 4 8 16 32 64
+        // 计算数组维度，每个维度有64个槽位
         int countOfWordsRequired = wordIndex(capacity - 1) + 1;
+        // 64的倍数
         size = countOfWordsRequired << ADDRESS_BITS_PER_WORD;
+        // 保存各维度的各槽位值的总和
         words = new long[countOfWordsRequired];
     }
 
@@ -51,14 +54,21 @@ class BitSetMod {
      * @throws IndexOutOfBoundsException if the specified index is negative
      */
     int set(int bitIndex, boolean value) {
+        // 计算bitIndex对应的维度
         int wordIndex = wordIndex(bitIndex);
+        // 对应槽位的值, 置1
         long bitMask = 1L << bitIndex;
+        // 获取当前槽位是否存在值; 即: 旧值
         int previous = (words[wordIndex] & bitMask) != 0 ? 1 : 0;
+
         if (value) {
+            // true: 当前槽位置1; 即：取值(当前值累加至words[index])
             words[wordIndex] |= bitMask;
         } else {
+            // false: 当前槽位置0; 即: 不取值
             words[wordIndex] &= ~bitMask;
         }
+
         return previous;
     }
 
@@ -74,8 +84,12 @@ class BitSetMod {
      * @throws IndexOutOfBoundsException if the specified index is negative
      */
     boolean get(int bitIndex) {
+        // 计算bitIndex对应的维度
         int wordIndex = wordIndex(bitIndex);
         long bitMask = 1L << bitIndex;
+
+        // 判断是否存在值; 即: 是否已设置为: true
         return (words[wordIndex] & bitMask) != 0;
     }
+
 }

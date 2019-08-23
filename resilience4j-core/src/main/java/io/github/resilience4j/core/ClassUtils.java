@@ -21,4 +21,5 @@ public class ClassUtils {
             throw new InstantiationException("Unable to create instance of class: " + clazz.getName(), e);
         }
     }
+    
 }

@@ -19,6 +19,7 @@
 package io.github.resilience4j.ratelimiter.event;
 
 public class RateLimiterOnSuccessEvent extends AbstractRateLimiterEvent {
+
     public RateLimiterOnSuccessEvent(String rateLimiterName) {
         super(rateLimiterName);
     }
@@ -27,4 +28,5 @@ public class RateLimiterOnSuccessEvent extends AbstractRateLimiterEvent {
     public Type getEventType() {
         return Type.SUCCESSFUL_ACQUIRE;
     }
+
 }

@@ -57,4 +57,5 @@ abstract class AbstractRetryEvent implements RetryEvent {
     public Throwable getLastThrowable() {
         return lastThrowable;
     }
+
 }

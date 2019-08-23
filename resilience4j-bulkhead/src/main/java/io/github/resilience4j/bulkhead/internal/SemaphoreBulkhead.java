@@ -18,7 +18,6 @@
  */
 package io.github.resilience4j.bulkhead.internal;
 
-
 import io.github.resilience4j.bulkhead.Bulkhead;
 import io.github.resilience4j.bulkhead.BulkheadConfig;
 import io.github.resilience4j.bulkhead.BulkheadFullException;
@@ -44,11 +43,14 @@ public class SemaphoreBulkhead implements Bulkhead {
     private static final String CONFIG_MUST_NOT_BE_NULL = "Config must not be null";
 
     private final String name;
-    private final Semaphore semaphore;
-    private final Object configChangesLock = new Object();
     private volatile BulkheadConfig config;
+
+    private final Semaphore semaphore;
+
     private final BulkheadMetrics metrics;
     private final BulkheadEventProcessor eventProcessor;
+
+    private final Object configChangesLock = new Object();
 
     /**
      * Creates a bulkhead using a configuration supplied
@@ -59,6 +61,7 @@ public class SemaphoreBulkhead implements Bulkhead {
     public SemaphoreBulkhead(String name, @Nullable BulkheadConfig bulkheadConfig) {
         this.name = name;
         this.config = requireNonNull(bulkheadConfig, CONFIG_MUST_NOT_BE_NULL);
+
         // init semaphore
         this.semaphore = new Semaphore(this.config.getMaxConcurrentCalls(), true);
 
@@ -91,12 +94,13 @@ public class SemaphoreBulkhead implements Bulkhead {
     @Override
     public void changeConfig(final BulkheadConfig newConfig) {
         synchronized (configChangesLock) {
-            int delta =  newConfig.getMaxConcurrentCalls() - config.getMaxConcurrentCalls();
+            int delta = newConfig.getMaxConcurrentCalls() - config.getMaxConcurrentCalls();
             if (delta < 0) {
                 semaphore.acquireUninterruptibly(-delta);
             } else if (delta > 0) {
                 semaphore.release(delta);
             }
+
             config = newConfig;
         }
     }
@@ -105,17 +109,15 @@ public class SemaphoreBulkhead implements Bulkhead {
     public boolean tryAcquirePermission() {
         boolean callPermitted = tryEnterBulkhead();
 
-        publishBulkheadEvent(
-                () -> callPermitted ? new BulkheadOnCallPermittedEvent(name)
-                        : new BulkheadOnCallRejectedEvent(name)
-        );
+        publishBulkheadEvent(() -> callPermitted ? new BulkheadOnCallPermittedEvent(name)
+                : new BulkheadOnCallRejectedEvent(name));
 
         return callPermitted;
     }
 
     @Override
     public void acquirePermission() {
-        if(!tryAcquirePermission()) {
+        if (!tryAcquirePermission()) {
             throw new BulkheadFullException(this);
         }
     }
@@ -211,6 +213,7 @@ public class SemaphoreBulkhead implements Bulkhead {
                 callPermitted = false;
             }
         }
+
         return callPermitted;
     }
 
@@ -221,6 +224,7 @@ public class SemaphoreBulkhead implements Bulkhead {
     }
 
     private final class BulkheadMetrics implements Metrics {
+
         private BulkheadMetrics() {
         }
 
@@ -231,7 +235,10 @@ public class SemaphoreBulkhead implements Bulkhead {
 
         @Override
         public int getMaxAllowedConcurrentCalls() {
+            // default: 25
             return config.getMaxConcurrentCalls();
         }
+
     }
+
 }

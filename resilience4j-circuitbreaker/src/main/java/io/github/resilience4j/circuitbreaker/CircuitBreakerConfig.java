@@ -24,14 +24,20 @@ import io.github.resilience4j.core.predicate.PredicateCreator;
 import java.time.Duration;
 import java.util.function.Predicate;
 
-
 /**
  * A {@link CircuitBreakerConfig} configures a {@link CircuitBreaker}
  */
 public class CircuitBreakerConfig {
 
-    public static final int DEFAULT_MAX_FAILURE_THRESHOLD = 50; // Percentage
-    public static final int DEFAULT_WAIT_DURATION_IN_OPEN_STATE = 60; // Seconds
+    /**
+     * Percentage   百分比
+     */
+    public static final int DEFAULT_MAX_FAILURE_THRESHOLD = 50;
+
+    /**
+     * Seconds 秒
+     */
+    public static final int DEFAULT_WAIT_DURATION_IN_OPEN_STATE = 60;
     public static final int DEFAULT_RING_BUFFER_SIZE_IN_HALF_OPEN_STATE = 10;
     public static final int DEFAULT_RING_BUFFER_SIZE_IN_CLOSED_STATE = 100;
     private static final Predicate<Throwable> DEFAULT_RECORD_FAILURE_PREDICATE = throwable -> true;
@@ -45,8 +51,12 @@ public class CircuitBreakerConfig {
     private int ringBufferSizeInHalfOpenState = DEFAULT_RING_BUFFER_SIZE_IN_HALF_OPEN_STATE;
     private int ringBufferSizeInClosedState = DEFAULT_RING_BUFFER_SIZE_IN_CLOSED_STATE;
     private Duration waitDurationInOpenState = Duration.ofSeconds(DEFAULT_WAIT_DURATION_IN_OPEN_STATE);
-    // The default exception predicate counts all exceptions as failures.
+
+    /**
+     * The default exception predicate counts all exceptions as failures.
+     */
     private Predicate<Throwable> recordFailurePredicate = DEFAULT_RECORD_FAILURE_PREDICATE;
+
     private boolean automaticTransitionFromOpenToHalfOpenEnabled = false;
 
     private CircuitBreakerConfig() {
@@ -88,6 +98,7 @@ public class CircuitBreakerConfig {
     }
 
     public int getRingBufferSizeInHalfOpenState() {
+        // default: 10
         return ringBufferSizeInHalfOpenState;
     }
 
@@ -128,7 +139,6 @@ public class CircuitBreakerConfig {
         }
 
         public Builder() {
-
         }
 
         /**
@@ -144,6 +154,7 @@ public class CircuitBreakerConfig {
                 throw new IllegalArgumentException("failureRateThreshold must be between 1 and 100");
             }
             this.failureRateThreshold = failureRateThreshold;
+
             return this;
         }
 
@@ -159,6 +170,7 @@ public class CircuitBreakerConfig {
                 throw new IllegalArgumentException("waitDurationInOpenState must be at least 1[ms]");
             }
             this.waitDurationInOpenState = waitDurationInOpenState;
+
             return this;
         }
 
@@ -177,6 +189,7 @@ public class CircuitBreakerConfig {
                 throw new IllegalArgumentException("ringBufferSizeInHalfOpenState must be greater than 0");
             }
             this.ringBufferSizeInHalfOpenState = ringBufferSizeInHalfOpenState;
+
             return this;
         }
 
@@ -195,6 +208,7 @@ public class CircuitBreakerConfig {
                 throw new IllegalArgumentException("ringBufferSizeInClosedState must be greater than 0");
             }
             this.ringBufferSizeInClosedState = ringBufferSizeInClosedState;
+
             return this;
         }
 
@@ -207,6 +221,7 @@ public class CircuitBreakerConfig {
          */
         public Builder recordFailure(Predicate<Throwable> predicate) {
             this.recordFailurePredicate = predicate;
+
             return this;
         }
 
@@ -229,6 +244,7 @@ public class CircuitBreakerConfig {
         @SafeVarargs
         public final Builder recordExceptions(@Nullable Class<? extends Throwable>... errorClasses) {
             this.recordExceptions = errorClasses != null ? errorClasses : new Class[0];
+
             return this;
         }
 
@@ -255,6 +271,7 @@ public class CircuitBreakerConfig {
         @SafeVarargs
         public final Builder ignoreExceptions(@Nullable Class<? extends Throwable>... errorClasses) {
             this.ignoreExceptions = errorClasses != null ? errorClasses : new Class[0];
+
             return this;
         }
 
@@ -265,6 +282,7 @@ public class CircuitBreakerConfig {
          */
         public Builder enableAutomaticTransitionFromOpenToHalfOpen() {
             this.automaticTransitionFromOpenToHalfOpenEnabled = true;
+
             return this;
         }
 
@@ -275,6 +293,7 @@ public class CircuitBreakerConfig {
          */
         public Builder automaticTransitionFromOpenToHalfOpenEnabled(boolean enableAutomaticTransitionFromOpenToHalfOpen) {
             this.automaticTransitionFromOpenToHalfOpenEnabled = enableAutomaticTransitionFromOpenToHalfOpen;
+
             return this;
         }
 
@@ -308,4 +327,5 @@ public class CircuitBreakerConfig {
                     .orElseGet(() -> recordFailurePredicate != null ? recordFailurePredicate : DEFAULT_RECORD_FAILURE_PREDICATE);
         }
     }
+
 }

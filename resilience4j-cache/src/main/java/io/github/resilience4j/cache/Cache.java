@@ -32,7 +32,7 @@ import java.util.concurrent.Callable;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
-public interface Cache<K, V>  {
+public interface Cache<K, V> {
 
     /**
      * @return the cache name
@@ -51,9 +51,8 @@ public interface Cache<K, V>  {
      * given supplier and puts it into the cache. Otherwise it returns the cached value.
      * If the function itself throws an (unchecked) exception, the exception is rethrown.
      *
-     * @param key   key with which the specified value is to be associated
+     * @param key      key with which the specified value is to be associated
      * @param supplier value to be associated with the specified key
-     *
      * @return cached value
      */
     V computeIfAbsent(K key, CheckedFunction0<V> supplier);
@@ -69,11 +68,11 @@ public interface Cache<K, V>  {
      * Creates a Retry with default configuration.
      *
      * @param cache the wrapped JCache instance
-     * @param <K> the type of key
-     * @param <V> the type of value
+     * @param <K>   the type of key
+     * @param <V>   the type of value
      * @return a Cache
      */
-    static <K,V> Cache<K,V> of(javax.cache.Cache<K, V> cache){
+    static <K, V> Cache<K, V> of(javax.cache.Cache<K, V> cache) {
         Objects.requireNonNull(cache, "Cache must not be null");
         return new CacheImpl<>(cache);
     }
@@ -82,13 +81,13 @@ public interface Cache<K, V>  {
      * Creates a functions which returns a value from a cache, if it exists.
      * Otherwise it calls the Supplier.
      *
-     * @param cache the Cache
+     * @param cache    the Cache
      * @param supplier the original Supplier
-     * @param <K> the type of key
-     * @param <R> the type of value
+     * @param <K>      the type of key
+     * @param <R>      the type of value
      * @return a supplier which is secured by a CircuitBreaker.
      */
-    static <K, R> CheckedFunction1<K, R> decorateCheckedSupplier(Cache<K, R> cache, CheckedFunction0<R> supplier){
+    static <K, R> CheckedFunction1<K, R> decorateCheckedSupplier(Cache<K, R> cache, CheckedFunction0<R> supplier) {
         return (K cacheKey) -> cache.computeIfAbsent(cacheKey, supplier);
     }
 
@@ -96,13 +95,13 @@ public interface Cache<K, V>  {
      * Creates a functions which returns a value from a cache, if it exists.
      * Otherwise it calls the Supplier.
      *
-     * @param cache the Cache
+     * @param cache    the Cache
      * @param supplier the original Supplier
-     * @param <K> the type of key
-     * @param <R> the type of value
+     * @param <K>      the type of key
+     * @param <R>      the type of value
      * @return a supplier which is secured by a CircuitBreaker.
      */
-    static <K, R> Function<K, R> decorateSupplier(Cache<K, R> cache, Supplier<R> supplier){
+    static <K, R> Function<K, R> decorateSupplier(Cache<K, R> cache, Supplier<R> supplier) {
         return (K cacheKey) -> cache.computeIfAbsent(cacheKey, supplier::get);
     }
 
@@ -110,13 +109,13 @@ public interface Cache<K, V>  {
      * Creates a functions which returns a value from a cache, if it exists.
      * Otherwise it calls the Callable.
      *
-     * @param cache the Cache
+     * @param cache    the Cache
      * @param callable the original Callable
-     * @param <K> the type of key
-     * @param <R> the type of value
+     * @param <K>      the type of key
+     * @param <R>      the type of value
      * @return a supplier which is secured by a CircuitBreaker.
      */
-    static <K, R> CheckedFunction1<K, R> decorateCallable(Cache<K, R> cache, Callable<R> callable){
+    static <K, R> CheckedFunction1<K, R> decorateCallable(Cache<K, R> cache, Callable<R> callable) {
         return (K cacheKey) -> cache.computeIfAbsent(cacheKey, callable::call);
     }
 
@@ -149,4 +148,5 @@ public interface Cache<K, V>  {
         EventPublisher onError(EventConsumer<CacheOnErrorEvent> eventConsumer);
 
     }
+
 }

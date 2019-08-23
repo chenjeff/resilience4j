@@ -43,9 +43,10 @@ public abstract class AbstractRateLimiterEvent implements RateLimiterEvent {
     @Override
     public String toString() {
         return "RateLimiterEvent{" +
-            "type=" + getEventType() +
-            ", rateLimiterName='" + getRateLimiterName() + '\'' +
-            ", creationTime=" + getCreationTime() +
-            '}';
+                "type=" + getEventType() +
+                ", rateLimiterName='" + getRateLimiterName() + '\'' +
+                ", creationTime=" + getCreationTime() +
+                '}';
     }
+
 }

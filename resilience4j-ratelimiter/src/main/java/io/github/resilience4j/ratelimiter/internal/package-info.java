@@ -22,3 +22,21 @@ package io.github.resilience4j.ratelimiter.internal;
 
 import io.github.resilience4j.core.lang.NonNullApi;
 import io.github.resilience4j.core.lang.NonNullFields;
+
+/**
+ * 限流
+ * <p>
+ * --- 平滑限流
+ * 1.令牌桶限流算法
+ * 2.漏桶限流算法
+ * --- 粗暴限流
+ * 3.固定并发数限流算法
+ * <p>
+ * --- 实现
+ * 令牌桶限流
+ * - 堵塞
+ * - 非堵塞
+ * -- 令牌桶限流的好处是可以应对突发请求的流量。
+ * 固定并发数限流
+ * - 信号量
+ */

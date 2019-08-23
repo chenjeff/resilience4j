@@ -1,5 +1,6 @@
 package io.github.resilience4j.core;
 
+
 public class InstantiationException extends RuntimeException {
 
     public InstantiationException(String message) {

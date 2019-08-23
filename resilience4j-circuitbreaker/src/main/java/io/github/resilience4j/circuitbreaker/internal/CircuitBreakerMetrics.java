@@ -27,7 +27,14 @@ import java.util.concurrent.atomic.LongAdder;
 class CircuitBreakerMetrics implements CircuitBreaker.Metrics {
 
     private final int ringBufferSize;
+    /**
+     * 失败置1
+     */
     private final RingBitSet ringBitSet;
+
+    /**
+     * 拒绝数
+     */
     private final LongAdder numberOfNotPermittedCalls;
 
     CircuitBreakerMetrics(int ringBufferSize) {
@@ -36,11 +43,12 @@ class CircuitBreakerMetrics implements CircuitBreaker.Metrics {
 
     CircuitBreakerMetrics(int ringBufferSize, @Nullable RingBitSet sourceSet) {
         this.ringBufferSize = ringBufferSize;
-        if(sourceSet != null) {
+        if (sourceSet != null) {
             this.ringBitSet = new RingBitSet(this.ringBufferSize, sourceSet);
-        }else{
+        } else {
             this.ringBitSet = new RingBitSet(this.ringBufferSize);
         }
+
         this.numberOfNotPermittedCalls = new LongAdder();
     }
 
@@ -61,7 +69,10 @@ class CircuitBreakerMetrics implements CircuitBreaker.Metrics {
      * @return the current failure rate  in percentage.
      */
     float onError() {
+        // 失败置1
         int currentNumberOfFailedCalls = ringBitSet.setNextBit(true);
+
+        // 计算并返回失败率
         return getFailureRate(currentNumberOfFailedCalls);
     }
 
@@ -71,7 +82,10 @@ class CircuitBreakerMetrics implements CircuitBreaker.Metrics {
      * @return the current failure rate in percentage.
      */
     float onSuccess() {
+        // 成功置0
         int currentNumberOfFailedCalls = ringBitSet.setNextBit(false);
+
+        // 计算并返回失败率
         return getFailureRate(currentNumberOfFailedCalls);
     }
 
@@ -79,6 +93,7 @@ class CircuitBreakerMetrics implements CircuitBreaker.Metrics {
      * Records a call which was not permitted, because the CircuitBreaker state is OPEN.
      */
     void onCallNotPermitted() {
+        // 拒绝数 +1
         numberOfNotPermittedCalls.increment();
     }
 
@@ -87,6 +102,7 @@ class CircuitBreakerMetrics implements CircuitBreaker.Metrics {
      */
     @Override
     public float getFailureRate() {
+        // 计算并返回失败率
         return getFailureRate(getNumberOfFailedCalls());
     }
 
@@ -95,6 +111,7 @@ class CircuitBreakerMetrics implements CircuitBreaker.Metrics {
      */
     @Override
     public int getMaxNumberOfBufferedCalls() {
+        // 缓存总数量
         return ringBufferSize;
     }
 
@@ -103,6 +120,7 @@ class CircuitBreakerMetrics implements CircuitBreaker.Metrics {
      */
     @Override
     public int getNumberOfSuccessfulCalls() {
+        // 成功数 = 已缓存总数 - 失败数
         return getNumberOfBufferedCalls() - getNumberOfFailedCalls();
     }
 
@@ -111,6 +129,7 @@ class CircuitBreakerMetrics implements CircuitBreaker.Metrics {
      */
     @Override
     public int getNumberOfBufferedCalls() {
+        // 已缓存的数量
         return this.ringBitSet.length();
     }
 
@@ -119,6 +138,7 @@ class CircuitBreakerMetrics implements CircuitBreaker.Metrics {
      */
     @Override
     public long getNumberOfNotPermittedCalls() {
+        // 拒绝总数
         return this.numberOfNotPermittedCalls.sum();
     }
 
@@ -127,13 +147,23 @@ class CircuitBreakerMetrics implements CircuitBreaker.Metrics {
      */
     @Override
     public int getNumberOfFailedCalls() {
+        // 失败数量
         return this.ringBitSet.cardinality();
     }
 
+    /**
+     * 计算失败率
+     *
+     * @param numberOfFailedCalls
+     * @return
+     */
     private float getFailureRate(int numberOfFailedCalls) {
+        // 未填满不计算
         if (getNumberOfBufferedCalls() < ringBufferSize) {
             return -1.0f;
         }
+
         return numberOfFailedCalls * 100.0f / ringBufferSize;
     }
+
 }

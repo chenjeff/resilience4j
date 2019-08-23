@@ -31,75 +31,75 @@ import java.util.function.Supplier;
  */
 public interface BulkheadRegistry extends Registry<Bulkhead, BulkheadConfig> {
 
-	/**
-	 * Returns all managed {@link Bulkhead} instances.
-	 *
-	 * @return all managed {@link Bulkhead} instances.
-	 */
-	Seq<Bulkhead> getAllBulkheads();
+    /**
+     * Returns all managed {@link Bulkhead} instances.
+     *
+     * @return all managed {@link Bulkhead} instances.
+     */
+    Seq<Bulkhead> getAllBulkheads();
 
-	/**
-	 * Returns a managed {@link Bulkhead} or creates a new one with default configuration.
-	 *
-	 * @param name the name of the Bulkhead
-	 * @return The {@link Bulkhead}
-	 */
-	Bulkhead bulkhead(String name);
+    /**
+     * Returns a managed {@link Bulkhead} or creates a new one with default configuration.
+     *
+     * @param name the name of the Bulkhead
+     * @return The {@link Bulkhead}
+     */
+    Bulkhead bulkhead(String name);
 
-	/**
-	 * Returns a managed {@link Bulkhead} or creates a new one with a custom BulkheadConfig configuration.
-	 *
-	 * @param name           the name of the Bulkhead
-	 * @param config a custom Bulkhead configuration
-	 * @return The {@link Bulkhead}
-	 */
-	Bulkhead bulkhead(String name, BulkheadConfig config);
+    /**
+     * Returns a managed {@link Bulkhead} or creates a new one with a custom BulkheadConfig configuration.
+     *
+     * @param name   the name of the Bulkhead
+     * @param config a custom Bulkhead configuration
+     * @return The {@link Bulkhead}
+     */
+    Bulkhead bulkhead(String name, BulkheadConfig config);
 
-	/**
-	 * Returns a managed {@link Bulkhead} or creates a new one with a custom Bulkhead configuration.
-	 *
-	 * @param name                   the name of the Bulkhead
-	 * @param bulkheadConfigSupplier a custom Bulkhead configuration supplier
-	 * @return The {@link Bulkhead}
-	 */
-	Bulkhead bulkhead(String name, Supplier<BulkheadConfig> bulkheadConfigSupplier);
+    /**
+     * Returns a managed {@link Bulkhead} or creates a new one with a custom Bulkhead configuration.
+     *
+     * @param name                   the name of the Bulkhead
+     * @param bulkheadConfigSupplier a custom Bulkhead configuration supplier
+     * @return The {@link Bulkhead}
+     */
+    Bulkhead bulkhead(String name, Supplier<BulkheadConfig> bulkheadConfigSupplier);
 
-	/**
-	 * Returns a managed {@link Bulkhead} or creates a new one with a custom Bulkhead configuration.
-	 *
-	 * @param name       the name of the Bulkhead
-	 * @param configName a custom Bulkhead configuration name
-	 * @return The {@link Bulkhead}
-	 */
-	Bulkhead bulkhead(String name, String configName);
+    /**
+     * Returns a managed {@link Bulkhead} or creates a new one with a custom Bulkhead configuration.
+     *
+     * @param name       the name of the Bulkhead
+     * @param configName a custom Bulkhead configuration name
+     * @return The {@link Bulkhead}
+     */
+    Bulkhead bulkhead(String name, String configName);
 
-	/**
-	 * Creates a BulkheadRegistry with a custom Bulkhead configuration.
-	 *
-	 * @param bulkheadConfig a custom Bulkhead configuration
-	 * @return a BulkheadRegistry instance backed by a custom Bulkhead configuration
-	 */
-	static BulkheadRegistry of(BulkheadConfig bulkheadConfig) {
-		return new InMemoryBulkheadRegistry(bulkheadConfig);
-	}
+    /**
+     * Creates a BulkheadRegistry with a custom Bulkhead configuration.
+     *
+     * @param bulkheadConfig a custom Bulkhead configuration
+     * @return a BulkheadRegistry instance backed by a custom Bulkhead configuration
+     */
+    static BulkheadRegistry of(BulkheadConfig bulkheadConfig) {
+        return new InMemoryBulkheadRegistry(bulkheadConfig);
+    }
 
-	/**
-	 * Creates a BulkheadRegistry with a Map of shared Bulkhead configurations.
-	 *
-	 * @param configs a Map of shared Bulkhead configurations
-	 * @return a RetryRegistry with a Map of shared Bulkhead configurations.
-	 */
-	static BulkheadRegistry of(Map<String, BulkheadConfig> configs) {
-		return new InMemoryBulkheadRegistry(configs);
-	}
+    /**
+     * Creates a BulkheadRegistry with a Map of shared Bulkhead configurations.
+     *
+     * @param configs a Map of shared Bulkhead configurations
+     * @return a RetryRegistry with a Map of shared Bulkhead configurations.
+     */
+    static BulkheadRegistry of(Map<String, BulkheadConfig> configs) {
+        return new InMemoryBulkheadRegistry(configs);
+    }
 
-	/**
-	 * Creates a BulkheadRegistry with a default Bulkhead configuration
-	 *
-	 * @return a BulkheadRegistry instance backed by a default Bulkhead configuration
-	 */
-	static BulkheadRegistry ofDefaults() {
-		return new InMemoryBulkheadRegistry(BulkheadConfig.ofDefaults());
-	}
+    /**
+     * Creates a BulkheadRegistry with a default Bulkhead configuration
+     *
+     * @return a BulkheadRegistry instance backed by a default Bulkhead configuration
+     */
+    static BulkheadRegistry ofDefaults() {
+        return new InMemoryBulkheadRegistry(BulkheadConfig.ofDefaults());
+    }
 
 }

@@ -39,4 +39,5 @@ abstract class AbstractCircuitBreakerEvent implements CircuitBreakerEvent {
     public ZonedDateTime getCreationTime() {
         return creationTime;
     }
+    
 }

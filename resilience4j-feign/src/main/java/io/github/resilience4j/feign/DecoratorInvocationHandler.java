@@ -38,8 +38,9 @@ class DecoratorInvocationHandler implements InvocationHandler {
     private final Map<Method, CheckedFunction1<Object[], Object>> decoratedDispatch;
 
     public DecoratorInvocationHandler(Target<?> target,
-            Map<Method, MethodHandler> dispatch,
-            FeignDecorator invocationDecorator) {
+                                      Map<Method, MethodHandler> dispatch,
+                                      FeignDecorator invocationDecorator) {
+
         this.target = checkNotNull(target, "target");
         checkNotNull(dispatch, "dispatch");
         this.decoratedDispatch = decorateMethodHandlers(dispatch, invocationDecorator, target);
@@ -51,21 +52,25 @@ class DecoratorInvocationHandler implements InvocationHandler {
      * will therefore invoke the decorator which, in turn, may invoke the corresponding
      * {@link MethodHandler}.
      *
-     * @param dispatch a map of the methods from the feign interface to the {@link MethodHandler}s.
+     * @param dispatch            a map of the methods from the feign interface to the {@link MethodHandler}s.
      * @param invocationDecorator the {@link FeignDecorator} with which to decorate the
-     *        {@link MethodHandler}s.
-     * @param target the target feign interface.
+     *                            {@link MethodHandler}s.
+     * @param target              the target feign interface.
      * @return a new map where the {@link MethodHandler}s are decorated with the
-     *         {@link FeignDecorator}.
+     * {@link FeignDecorator}.
      */
     private Map<Method, CheckedFunction1<Object[], Object>> decorateMethodHandlers(Map<Method, MethodHandler> dispatch,
-            FeignDecorator invocationDecorator, Target<?> target) {
+                                                                                   FeignDecorator invocationDecorator,
+                                                                                   Target<?> target) {
+
         final Map<Method, CheckedFunction1<Object[], Object>> map = new HashMap<>();
         for (final Map.Entry<Method, MethodHandler> entry : dispatch.entrySet()) {
             final Method method = entry.getKey();
             final MethodHandler methodHandler = entry.getValue();
+
             map.put(method, invocationDecorator.decorate(methodHandler::invoke, method, methodHandler, target));
         }
+
         return map;
     }
 
@@ -75,13 +80,10 @@ class DecoratorInvocationHandler implements InvocationHandler {
         switch (method.getName()) {
             case "equals":
                 return equals(args.length > 0 ? args[0] : null);
-
             case "hashCode":
                 return hashCode();
-
             case "toString":
                 return toString();
-
             default:
                 break;
         }
@@ -95,13 +97,16 @@ class DecoratorInvocationHandler implements InvocationHandler {
         if (compareTo == null) {
             return false;
         }
+
         if (Proxy.isProxyClass(compareTo.getClass())) {
             compareTo = Proxy.getInvocationHandler(compareTo);
         }
+
         if (compareTo instanceof DecoratorInvocationHandler) {
             final DecoratorInvocationHandler other = (DecoratorInvocationHandler) compareTo;
             return target.equals(other.target);
         }
+
         return false;
     }
 
@@ -114,4 +119,5 @@ class DecoratorInvocationHandler implements InvocationHandler {
     public String toString() {
         return target.toString();
     }
+
 }

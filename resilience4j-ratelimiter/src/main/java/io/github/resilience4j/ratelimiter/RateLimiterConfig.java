@@ -23,12 +23,24 @@ import java.time.Duration;
 import static java.util.Objects.requireNonNull;
 
 public class RateLimiterConfig {
+
     private static final String TIMEOUT_DURATION_MUST_NOT_BE_NULL = "TimeoutDuration must not be null";
     private static final String LIMIT_REFRESH_PERIOD_MUST_NOT_BE_NULL = "LimitRefreshPeriod must not be null";
     private static final Duration ACCEPTABLE_REFRESH_PERIOD = Duration.ofNanos(1L);
 
+    /**
+     * 超时
+     */
     private final Duration timeoutDuration;
+
+    /**
+     * 刷新周期
+     */
     private final Duration limitRefreshPeriod;
+
+    /**
+     * 周期内允许的访问数量
+     */
     private final int limitForPeriod;
 
     private RateLimiterConfig(Duration timeoutDuration, Duration limitRefreshPeriod, int limitForPeriod) {
@@ -61,7 +73,7 @@ public class RateLimiterConfig {
      *
      * @return a default RateLimiter configuration.
      */
-    public static RateLimiterConfig ofDefaults(){
+    public static RateLimiterConfig ofDefaults() {
         return new Builder().build();
     }
 
@@ -77,16 +89,18 @@ public class RateLimiterConfig {
         return limitForPeriod;
     }
 
-    @Override public String toString() {
+    @Override
+    public String toString() {
         return "RateLimiterConfig{" +
-            "timeoutDuration=" + timeoutDuration +
-            ", limitRefreshPeriod=" + limitRefreshPeriod +
-            ", limitForPeriod=" + limitForPeriod +
-            '}';
+                "timeoutDuration=" + timeoutDuration +
+                ", limitRefreshPeriod=" + limitRefreshPeriod +
+                ", limitForPeriod=" + limitForPeriod +
+                '}';
     }
 
     public static class Builder {
-        private Duration timeoutDuration =  Duration.ofSeconds(5);
+
+        private Duration timeoutDuration = Duration.ofSeconds(5);
         private Duration limitRefreshPeriod = Duration.ofNanos(500);
         private int limitForPeriod = 50;
 
@@ -160,6 +174,7 @@ public class RateLimiterConfig {
         if (refreshPeriodIsTooShort) {
             throw new IllegalArgumentException("LimitRefreshPeriod is too short");
         }
+
         return limitRefreshPeriod;
     }
 
@@ -167,6 +182,7 @@ public class RateLimiterConfig {
         if (limitForPeriod < 1) {
             throw new IllegalArgumentException("LimitForPeriod should be greater than 0");
         }
+
         return limitForPeriod;
     }
 }

@@ -44,6 +44,7 @@ import static java.util.concurrent.locks.LockSupport.parkNanos;
  * {@link AtomicRateLimiter.State}
  */
 public class AtomicRateLimiter implements RateLimiter {
+
     private static final long nanoTimeStart = nanoTime();
 
     private final String name;
@@ -55,9 +56,7 @@ public class AtomicRateLimiter implements RateLimiter {
         this.name = name;
 
         waitingThreads = new AtomicInteger(0);
-        state = new AtomicReference<>(new State(
-                rateLimiterConfig, 0, rateLimiterConfig.getLimitForPeriod(), 0
-        ));
+        state = new AtomicReference<>(new State(rateLimiterConfig, 0, rateLimiterConfig.getLimitForPeriod(), 0));
         eventProcessor = new RateLimiterEventProcessor();
     }
 
@@ -69,9 +68,8 @@ public class AtomicRateLimiter implements RateLimiter {
         RateLimiterConfig newConfig = RateLimiterConfig.from(state.get().config)
                 .timeoutDuration(timeoutDuration)
                 .build();
-        state.updateAndGet(currentState -> new State(
-                newConfig, currentState.activeCycle, currentState.activePermissions, currentState.nanosToWait
-        ));
+
+        state.updateAndGet(currentState -> new State(newConfig, currentState.activeCycle, currentState.activePermissions, currentState.nanosToWait));
     }
 
     /**
@@ -82,9 +80,8 @@ public class AtomicRateLimiter implements RateLimiter {
         RateLimiterConfig newConfig = RateLimiterConfig.from(state.get().config)
                 .limitForPeriod(limitForPeriod)
                 .build();
-        state.updateAndGet(currentState -> new State(
-                newConfig, currentState.activeCycle, currentState.activePermissions, currentState.nanosToWait
-        ));
+
+        state.updateAndGet(currentState -> new State(newConfig, currentState.activeCycle, currentState.activePermissions, currentState.nanosToWait));
     }
 
     /**
@@ -94,33 +91,54 @@ public class AtomicRateLimiter implements RateLimiter {
         return nanoTime() - nanoTimeStart;
     }
 
+    /**
+     * 阻塞获取token
+     *
+     * @return true: 成功; false: 失败;
+     */
     @Override
     public boolean acquirePermission() {
+        // 超时时间
         long timeoutInNanos = state.get().config.getTimeoutDuration().toNanos();
         State modifiedState = updateStateWithBackOff(timeoutInNanos);
+
         boolean result = waitForPermissionIfNecessary(timeoutInNanos, modifiedState.nanosToWait);
+        // 触发事件
         publishRateLimiterEvent(result);
+
         return result;
     }
 
+    /**
+     * 非阻塞获取token, 程序自行控制
+     *
+     * @return 0: 获取成功; -1: 获取失败; 大于0: 需等待时长
+     */
     @Override
     public long reservePermission() {
         long timeoutInNanos = state.get().config.getTimeoutDuration().toNanos();
         State modifiedState = updateStateWithBackOff(timeoutInNanos);
 
+        // 是否需要等待token产生; 当前是否存在可用token
         boolean canAcquireImmediately = modifiedState.nanosToWait <= 0;
         if (canAcquireImmediately) {
+            // 有可用token, 无需等待
             publishRateLimiterEvent(true);
             return 0;
         }
 
+        // 是否会超时
         boolean canAcquireInTime = timeoutInNanos >= modifiedState.nanosToWait;
         if (canAcquireInTime) {
+            // 不会超时
             publishRateLimiterEvent(true);
+            // 返回: 等待时间, 程序自行处理
             return modifiedState.nanosToWait;
         }
 
+        // 超时
         publishRateLimiterEvent(false);
+
         return -1;
     }
 
@@ -143,7 +161,9 @@ public class AtomicRateLimiter implements RateLimiter {
         do {
             prev = state.get();
             next = calculateNextState(timeoutInNanos, prev);
+            // 通过 CAS 保证顺序
         } while (!compareAndSet(prev, next));
+
         return next;
     }
 
@@ -166,7 +186,9 @@ public class AtomicRateLimiter implements RateLimiter {
         if (state.compareAndSet(current, next)) {
             return true;
         }
-        parkNanos(1); // back-off
+
+        // back-off
+        parkNanos(1);
         return false;
     }
 
@@ -180,24 +202,39 @@ public class AtomicRateLimiter implements RateLimiter {
      * @return next {@link State}
      */
     private State calculateNextState(final long timeoutInNanos, final State activeState) {
+        // 刷新周期: default: 500纳秒
         long cyclePeriodInNanos = activeState.config.getLimitRefreshPeriod().toNanos();
+        // 周期内允许的访token量: default: 50个
         int permissionsPerCycle = activeState.config.getLimitForPeriod();
 
+        // 限流器启动到现在(当前时间)经过的时间 单位: 纳秒
         long currentNanos = currentNanoTime();
+        // 当前属于第几个周期
         long currentCycle = currentNanos / cyclePeriodInNanos;
 
+        // Stage当前周期
         long nextCycle = activeState.activeCycle;
+        // Stage当前token数量(可用token数量) 可能为: 负数
         int nextPermissions = activeState.activePermissions;
+
+        // 判断下一个周期跟当前周期是否相同，不同则计算周期允许的token数量
         if (nextCycle != currentCycle) {
+            // 一直不被触发可能已经过多个周期; 存在跨多个周期这种情况;
+            // currentCycle 大于 nextCycle --> elapsedCycles 大于 零
             long elapsedCycles = currentCycle - nextCycle;
+            // token积累数量
             long accumulatedPermissions = elapsedCycles * permissionsPerCycle;
+            // 更新周期
             nextCycle = currentCycle;
+            // 避免产生大于周期配置的允许token数量: 取较小值
             nextPermissions = (int) min(nextPermissions + accumulatedPermissions, permissionsPerCycle);
         }
-        long nextNanosToWait = nanosToWaitForPermission(
-                cyclePeriodInNanos, permissionsPerCycle, nextPermissions, currentNanos, currentCycle
-        );
+
+        // 计算下一周期token等待时间（计算轮到当前线程获取token，需等待的时间）
+        long nextNanosToWait = nanosToWaitForPermission(cyclePeriodInNanos, permissionsPerCycle, nextPermissions, currentNanos, currentCycle);
+
         State nextState = reservePermissions(activeState.config, timeoutInNanos, nextCycle, nextPermissions, nextNanosToWait);
+
         return nextState;
     }
 
@@ -211,14 +248,26 @@ public class AtomicRateLimiter implements RateLimiter {
      * @param currentNanos         current time in nanoseconds
      * @param currentCycle         current {@link AtomicRateLimiter} cycle    @return nanoseconds to wait for the next permission
      */
-    private long nanosToWaitForPermission(final long cyclePeriodInNanos, final int permissionsPerCycle,
-                                          final int availablePermissions, final long currentNanos, final long currentCycle) {
+    private long nanosToWaitForPermission(final long cyclePeriodInNanos /*  刷新周期: default: 500纳秒 */,
+                                          final int permissionsPerCycle /*  周期内允许的访token量: default: 50个 */,
+                                          final int availablePermissions /*  当前可用token数量 */,
+                                          final long currentNanos /*  限流器启动到现在(当前时间)经过的时间 单位: 纳秒 */,
+                                          final long currentCycle /*  当前属于第几个周期 */) {
+        // 可用token大于0, 直接放行。无需等待
         if (availablePermissions > 0) {
             return 0L;
         }
+
+        // 下一周期，纳秒数
         long nextCycleTimeInNanos = (currentCycle + 1) * cyclePeriodInNanos;
+
+        // 到达下一周期，需等待的时间
         long nanosToNextCycle = nextCycleTimeInNanos - currentNanos;
+
+        // 产生全部token，所需要的周期数
         int fullCyclesToWait = (-availablePermissions) / permissionsPerCycle;
+
+        // 周期数 * 周期时间 + 当前到达下一周期的时间
         return (fullCyclesToWait * cyclePeriodInNanos) + nanosToNextCycle;
     }
 
@@ -233,13 +282,20 @@ public class AtomicRateLimiter implements RateLimiter {
      * @param nanosToWait    nanoseconds to wait for the next permission
      * @return new {@link State} with possibly reserved permissions and time to wait
      */
-    private State reservePermissions(final RateLimiterConfig config, final long timeoutInNanos,
-                                     final long cycle, final int permissions, final long nanosToWait) {
+    private State reservePermissions(final RateLimiterConfig config /*  配置文件 */,
+                                     final long timeoutInNanos /*  超时时间 */,
+                                     final long cycle /*  当前属于第几个周期 */,
+                                     final int permissions /*  当前可用token数量 */,
+                                     final long nanosToWait /*  当前线程需等待的时间 */) {
+
+        // 等待时间是否超时
         boolean canAcquireInTime = timeoutInNanos >= nanosToWait;
         int permissionsWithReservation = permissions;
         if (canAcquireInTime) {
+            // 未超时
             permissionsWithReservation--;
         }
+
         return new State(config, cycle, permissionsWithReservation, nanosToWait);
     }
 
@@ -251,15 +307,22 @@ public class AtomicRateLimiter implements RateLimiter {
      * @return true if caller was able to wait for nanosToWait without {@link Thread#interrupt} and not exceed timeout
      */
     private boolean waitForPermissionIfNecessary(final long timeoutInNanos, final long nanosToWait) {
+        // 当前线程是否需要等待
         boolean canAcquireImmediately = nanosToWait <= 0;
+        // 等待时间是否超时
         boolean canAcquireInTime = timeoutInNanos >= nanosToWait;
 
         if (canAcquireImmediately) {
+            // 无需等待
             return true;
         }
+
         if (canAcquireInTime) {
+            // 未超时
             return waitForPermission(nanosToWait);
         }
+
+        // 超时
         waitForPermission(timeoutInNanos);
         return false;
     }
@@ -274,18 +337,26 @@ public class AtomicRateLimiter implements RateLimiter {
      * @return true if caller was not {@link Thread#interrupted} while waiting
      */
     private boolean waitForPermission(final long nanosToWait) {
+        // 等待计数器 +1
         waitingThreads.incrementAndGet();
+        // 等待时间终点
         long deadline = currentNanoTime() + nanosToWait;
         boolean wasInterrupted = false;
+        // 判断是否需要堵塞
         while (currentNanoTime() < deadline && !wasInterrupted) {
+            // 计算堵塞时长
             long sleepBlockDuration = deadline - currentNanoTime();
+            // 线程等待
             parkNanos(sleepBlockDuration);
             wasInterrupted = Thread.interrupted();
         }
+
+        // 计数器复位
         waitingThreads.decrementAndGet();
         if (wasInterrupted) {
             currentThread().interrupt();
         }
+
         return !wasInterrupted;
     }
 
@@ -339,10 +410,12 @@ public class AtomicRateLimiter implements RateLimiter {
         if (!eventProcessor.hasConsumers()) {
             return;
         }
+
         if (permissionAcquired) {
             eventProcessor.consumeEvent(new RateLimiterOnSuccessEvent(name));
             return;
         }
+
         eventProcessor.consumeEvent(new RateLimiterOnFailureEvent(name));
     }
 
@@ -361,14 +434,14 @@ public class AtomicRateLimiter implements RateLimiter {
      * </ul>
      */
     private static class State {
+
         private final RateLimiterConfig config;
 
         private final long activeCycle;
         private final int activePermissions;
         private final long nanosToWait;
 
-        private State(RateLimiterConfig config,
-                      final long activeCycle, final int activePermissions, final long nanosToWait) {
+        private State(RateLimiterConfig config, final long activeCycle, final int activePermissions, final long nanosToWait) {
             this.config = config;
             this.activeCycle = activeCycle;
             this.activePermissions = activePermissions;
@@ -422,4 +495,5 @@ public class AtomicRateLimiter implements RateLimiter {
         }
 
     }
+
 }

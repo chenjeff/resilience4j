@@ -28,48 +28,80 @@ import java.util.concurrent.CopyOnWriteArrayList;
 
 public class EventProcessor<T> implements EventPublisher<T> {
 
+    /**
+     * 是否存在事件注册
+     */
     private boolean consumerRegistered;
+
+    /**
+     * 全类型-事件
+     */
     List<EventConsumer<T>> onEventConsumers = new CopyOnWriteArrayList<>();
+
+    /**
+     * 特定类型-事件
+     */
     ConcurrentMap<String, List<EventConsumer<T>>> eventConsumerMap = new ConcurrentHashMap<>();
 
-    public boolean hasConsumers(){
+    public boolean hasConsumers() {
         return consumerRegistered;
     }
 
+    /**
+     * 特定类型-事件, 注册入口
+     *
+     * @param className
+     * @param eventConsumer
+     */
     @SuppressWarnings("unchecked")
-    public synchronized void registerConsumer(String className, EventConsumer<? extends T> eventConsumer){
+    public synchronized void registerConsumer(String className, EventConsumer<? extends T> eventConsumer) {
         this.consumerRegistered = true;
         this.eventConsumerMap.compute(className, (k, consumers) -> {
-            if(consumers == null){
+            if (consumers == null) {
                 consumers = new ArrayList<>();
                 consumers.add((EventConsumer<T>) eventConsumer);
                 return consumers;
-            }else{
+            } else {
                 consumers.add((EventConsumer<T>) eventConsumer);
                 return consumers;
             }
         });
     }
 
+    /**
+     * 触发事件
+     *
+     * @param event
+     * @param <E>
+     * @return
+     */
     public <E extends T> boolean processEvent(E event) {
         boolean consumed = false;
-        if(!onEventConsumers.isEmpty()){
+        if (!onEventConsumers.isEmpty()) {
             onEventConsumers.forEach(onEventConsumer -> onEventConsumer.consumeEvent(event));
             consumed = true;
         }
-        if(!eventConsumerMap.isEmpty()){
+
+        if (!eventConsumerMap.isEmpty()) {
             List<EventConsumer<T>> eventConsumers = this.eventConsumerMap.get(event.getClass().getSimpleName());
-            if(eventConsumers != null && !eventConsumers.isEmpty()){
+            if (eventConsumers != null && !eventConsumers.isEmpty()) {
                 eventConsumers.forEach(consumer -> consumer.consumeEvent(event));
                 consumed = true;
             }
         }
+
         return consumed;
     }
 
+    /**
+     * 全类型-事件, 注册入口
+     *
+     * @param onEventConsumer
+     */
     @Override
     public synchronized void onEvent(@Nullable EventConsumer<T> onEventConsumer) {
         this.consumerRegistered = true;
         this.onEventConsumers.add(onEventConsumer);
     }
+
 }
